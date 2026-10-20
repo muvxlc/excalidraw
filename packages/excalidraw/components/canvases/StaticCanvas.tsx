@@ -100,6 +100,9 @@ const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
     currentHoveredFontFamily: appState.currentHoveredFontFamily,
     croppingElementId: appState.croppingElementId,
     suggestedBinding: appState.suggestedBinding,
+    pagePreset: appState.pagePreset,
+    pageOrientation: appState.pageOrientation,
+    pageModeEnabled: appState.pageModeEnabled,
   };
 
   return relevantAppStateProps;

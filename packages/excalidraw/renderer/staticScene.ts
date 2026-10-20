@@ -2,6 +2,7 @@ import {
   applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
+  getPageDimensions,
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
@@ -308,6 +309,32 @@ const _renderStaticScene = ({
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
+
+  if (appState.pageModeEnabled && appState.pagePreset) {
+    const dims = getPageDimensions(
+      appState.pagePreset,
+      appState.pageOrientation,
+    );
+    if (dims) {
+      const originX = -dims.width / 2;
+      const originY = -dims.height / 2;
+      const x = originX + appState.scrollX;
+      const y = originY + appState.scrollY;
+      context.save();
+      if (!isExporting) {
+        context.shadowColor = "rgba(0, 0, 0, 0.15)";
+        context.shadowBlur = 12;
+        context.shadowOffsetY = 4;
+      }
+      context.fillStyle = appState.viewBackgroundColor || "#ffffff";
+      context.fillRect(x, y, dims.width, dims.height);
+      context.shadowColor = "transparent";
+      context.strokeStyle = "#d0d0d0";
+      context.lineWidth = 1 / appState.zoom.value;
+      context.strokeRect(x, y, dims.width, dims.height);
+      context.restore();
+    }
+  }
 
   // Grid
   if (renderGrid) {

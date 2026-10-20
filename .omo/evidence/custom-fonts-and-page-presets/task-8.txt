@@ -1,0 +1,27 @@
+Task 8: Canvas Page Preset controls and orientation toggle
+
+Changes:
+- packages/excalidraw/actions/actionCanvas.tsx
+  - Added actionChangePagePreset (name: "changePagePreset"): sets pagePreset,
+    pageModeEnabled = preset !== null, optional pageOrientation override.
+    Preserves paper-sheet center in scene coordinates by shifting scrollX/Y
+    by half the width/height delta (divided by zoom) between old and new
+    page dimensions; elements untouched.
+  - Added actionTogglePageOrientation (name: "togglePageOrientation"): no-op
+    when pagePreset is null; toggles portrait/landscape and compensates
+    scroll so sheet center stays fixed.
+- packages/excalidraw/components/main-menu/DefaultItems.tsx
+  - Added PageSetup main-menu component: DropdownMenuSub with radio choices
+    "Infinite canvas" / A4 / A5 (drives actionChangePagePreset) and a
+    "Toggle page orientation" item shown only when a preset is active
+    (drives actionTogglePageOrientation). Hidden in view mode.
+
+Supporting edits required for `yarn test:typecheck` to pass (outside the
+declared scope, minimal and additive):
+- packages/excalidraw/actions/types.ts: added "changePagePreset" and
+  "togglePageOrientation" to the ActionName union.
+- packages/excalidraw/locales/en.json: added labels.pageSetup,
+  labels.pagePreset, labels.infiniteCanvas, labels.togglePageOrientation.
+
+Verification:
+- `yarn test:typecheck` (tsc) exit code 0, no errors (run 2026-10-20).

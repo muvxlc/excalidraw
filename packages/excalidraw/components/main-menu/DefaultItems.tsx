@@ -1,6 +1,8 @@
 import clsx from "clsx";
 
-import { THEME } from "@excalidraw/common";
+import { PAGE_PRESET_NAMES, THEME } from "@excalidraw/common";
+
+import type { PagePreset } from "@excalidraw/common";
 
 import type { Theme } from "@excalidraw/element/types";
 
@@ -20,6 +22,10 @@ import {
   actionToggleZenMode,
 } from "../../actions";
 import { actionToggleViewMode } from "../../actions/actionToggleViewMode";
+import {
+  actionChangePagePreset,
+  actionTogglePageOrientation,
+} from "../../actions/actionCanvas";
 import { resolveInputDevice } from "../../appState";
 
 import { getShortcutFromShortcutName } from "../../actions/shortcuts";
@@ -656,6 +662,68 @@ const PreferencesToggleElementPropertiesItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+
+export const PageSetup = () => {
+  const { t } = useI18n();
+  const appState = useUIAppState();
+  const actionManager = useExcalidrawActionManager();
+
+  if (appState.viewModeEnabled) {
+    return null;
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSub.Trigger icon={emptyIcon}>
+        {t("labels.pageSetup")}
+      </DropdownMenuSub.Trigger>
+      <DropdownMenuSub.Content>
+        <DropdownMenuItemContentRadio<"infinite" | PagePreset>
+          name="pagePreset"
+          icon={emptyIcon}
+          value={appState.pagePreset ?? "infinite"}
+          onChange={(value) => {
+            actionManager.executeAction(actionChangePagePreset, "ui", {
+              preset: value === "infinite" ? null : value,
+            });
+          }}
+          choices={[
+            {
+              value: "infinite",
+              label: t("labels.infiniteCanvas"),
+              ariaLabel: t("labels.infiniteCanvas"),
+            },
+            {
+              value: PAGE_PRESET_NAMES.A4,
+              label: PAGE_PRESET_NAMES.A4,
+              ariaLabel: PAGE_PRESET_NAMES.A4,
+            },
+            {
+              value: PAGE_PRESET_NAMES.A5,
+              label: PAGE_PRESET_NAMES.A5,
+              ariaLabel: PAGE_PRESET_NAMES.A5,
+            },
+          ]}
+        >
+          {t("labels.pagePreset")}
+        </DropdownMenuItemContentRadio>
+        {appState.pagePreset !== null && (
+          <DropdownMenuItem
+            icon={emptyIcon}
+            data-testid="toggle-page-orientation"
+            onSelect={() =>
+              actionManager.executeAction(actionTogglePageOrientation)
+            }
+            aria-label={t("labels.togglePageOrientation")}
+          >
+            {t("labels.togglePageOrientation")}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuSub.Content>
+    </DropdownMenuSub>
+  );
+};
+PageSetup.displayName = "PageSetup";
 
 export const Preferences = ({
   children,

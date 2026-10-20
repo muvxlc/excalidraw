@@ -23,6 +23,7 @@ import {
   reduceToCommonValue,
   invariant,
   FONT_SIZES,
+  type FontAssetId,
   type StrokeWidthKey,
 } from "@excalidraw/common";
 
@@ -1149,6 +1150,8 @@ type ChangeFontFamilyData = Partial<
     | "fontTopPicks"
   >
 > & {
+  /** custom font asset to apply to selected text elements (null clears it) */
+  currentItemFontRef?: FontAssetId | null;
   /** cache of selected & editing elements populated on opened popup */
   cachedElements?: ElementsMap;
   /** flag to reset all elements to their cached versions  */
@@ -1199,7 +1202,22 @@ export const actionChangeFontFamily = register<{
 
     invariant(value, "actionChangeFontFamily: value must be defined");
 
-    const { currentItemFontFamily, currentHoveredFontFamily } = value;
+    const {
+      currentItemFontFamily,
+      currentHoveredFontFamily,
+      currentItemFontRef,
+    } = value as ChangeFontFamilyData & {
+      currentItemFontFamily: FontFamilyValues;
+      currentHoveredFontFamily: FontFamilyValues;
+    };
+
+    // custom font selection sets the asset ref, built-in font selection clears it
+    const nextFontRef =
+      currentItemFontRef !== undefined
+        ? currentItemFontRef
+        : currentItemFontFamily
+        ? null
+        : undefined;
 
     let nextCaptureUpdateAction: CaptureUpdateActionType =
       CaptureUpdateAction.EVENTUALLY;
@@ -1243,9 +1261,28 @@ export const actionChangeFontFamily = register<{
       appState: {
         ...appState,
         ...nextAppState,
+        // keep the active custom font ref in sync with the selection
+        ...(nextFontRef !== undefined
+          ? { currentItemFontRef: nextFontRef }
+          : {}),
       },
       captureUpdate: nextCaptureUpdateAction,
     };
+
+    if (nextFontRef !== undefined && !nextFontFamily) {
+      // fontRef-only update (custom font selection)
+      Object.assign(result, {
+        elements: changeProperty(
+          elements,
+          appState,
+          (oldElement) =>
+            isTextElement(oldElement) && oldElement.fontRef !== nextFontRef
+              ? newElementWith(oldElement, { fontRef: nextFontRef })
+              : oldElement,
+          true,
+        ),
+      });
+    }
 
     if (nextFontFamily && !skipOnHoverRender) {
       const elementContainerMapping = new Map<
@@ -1286,6 +1323,9 @@ export const actionChangeFontFamily = register<{
                 {
                   fontFamily: nextFontFamily,
                   lineHeight: getLineHeight(nextFontFamily!),
+                  ...(nextFontRef !== undefined
+                    ? { fontRef: nextFontRef }
+                    : {}),
                 },
               );
 

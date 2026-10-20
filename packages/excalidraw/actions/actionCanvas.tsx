@@ -1,5 +1,6 @@
 import {
   DEFAULT_CANVAS_BACKGROUND_PICKS,
+  getPageDimensions,
   MAX_ZOOM,
   MIN_ZOOM,
   THEME,
@@ -13,6 +14,8 @@ import { newElementWith } from "@excalidraw/element";
 import { getCommonBounds } from "@excalidraw/element";
 
 import { CaptureUpdateAction } from "@excalidraw/element";
+
+import type { PageOrientation, PagePreset } from "@excalidraw/common";
 
 import type { Bounds } from "@excalidraw/common";
 
@@ -427,6 +430,85 @@ export const actionZoomToFit = register({
     event.shiftKey &&
     !event.altKey &&
     !event[KEYS.CTRL_OR_CMD],
+});
+
+export const actionChangePagePreset = register<{
+  preset: PagePreset | null;
+  orientation?: PageOrientation;
+}>({
+  name: "changePagePreset",
+  label: "labels.pagePreset",
+  trackEvent: { category: "canvas" },
+  perform: (_elements, appState, value) => {
+    if (!value) {
+      return false;
+    }
+    const nextOrientation = value.orientation ?? appState.pageOrientation;
+    const prevDimensions = getPageDimensions(
+      appState.pagePreset,
+      appState.pageOrientation,
+    );
+    const nextDimensions = getPageDimensions(value.preset, nextOrientation);
+
+    // keep the paper sheet's center fixed in scene coordinates by shifting
+    // the scroll by half the size delta; drawn elements are untouched
+    let scrollX = appState.scrollX;
+    let scrollY = appState.scrollY;
+    if (prevDimensions && nextDimensions) {
+      const zoom = appState.zoom.value;
+      scrollX += (nextDimensions.width - prevDimensions.width) / 2 / zoom;
+      scrollY += (nextDimensions.height - prevDimensions.height) / 2 / zoom;
+    }
+
+    return {
+      appState: {
+        ...appState,
+        pagePreset: value.preset,
+        pageModeEnabled: value.preset !== null,
+        pageOrientation: nextOrientation,
+        scrollX,
+        scrollY,
+      },
+      captureUpdate: CaptureUpdateAction.EVENTUALLY,
+    };
+  },
+});
+
+export const actionTogglePageOrientation = register({
+  name: "togglePageOrientation",
+  label: "labels.togglePageOrientation",
+  trackEvent: { category: "canvas" },
+  predicate: (_elements, appState) => appState.pagePreset !== null,
+  perform: (_elements, appState) => {
+    if (appState.pagePreset === null) {
+      return false;
+    }
+    const nextOrientation: PageOrientation =
+      appState.pageOrientation === "portrait" ? "landscape" : "portrait";
+
+    // swap width/height deltas so the sheet center stays fixed
+    const dimensions = getPageDimensions(
+      appState.pagePreset,
+      appState.pageOrientation,
+    );
+    let scrollX = appState.scrollX;
+    let scrollY = appState.scrollY;
+    if (dimensions) {
+      const zoom = appState.zoom.value;
+      scrollX += (dimensions.height - dimensions.width) / 2 / zoom;
+      scrollY += (dimensions.width - dimensions.height) / 2 / zoom;
+    }
+
+    return {
+      appState: {
+        ...appState,
+        pageOrientation: nextOrientation,
+        scrollX,
+        scrollY,
+      },
+      captureUpdate: CaptureUpdateAction.EVENTUALLY,
+    };
+  },
 });
 
 export const actionToggleTheme = register<AppState["theme"]>({

@@ -9,6 +9,8 @@ import React, {
 
 import { type FontFamilyValues } from "@excalidraw/element/types";
 
+import { isTextElement } from "@excalidraw/element";
+
 import {
   arrayToList,
   debounce,
@@ -16,9 +18,14 @@ import {
   getFontFamilyString,
 } from "@excalidraw/common";
 
+import type { SceneFontAsset } from "@excalidraw/common";
+
 import type { ValueOf } from "@excalidraw/common/utility-types";
 
+import { saveCustomFontToStorage } from "../../data/fontStorage";
 import { Fonts } from "../../fonts";
+import { parseFontFile } from "../../fonts/fontParser";
+import { getSelectedElements } from "../../scene";
 import { t } from "../../i18n";
 import {
   useApp,
@@ -48,7 +55,20 @@ import { useFontPickerDnD } from "./fontTopPicksDnD";
 import { fontPickerKeyHandler } from "./keyboardNavHandlers";
 
 import type { JSX } from "react";
+import type { AppState } from "../../types";
 import type { ExcalidrawFontFace } from "../../fonts/ExcalidrawFontFace";
+
+const MAX_FONT_FILE_SIZE = 20 * 1024 * 1024;
+
+const FONT_FILE_ACCEPT = ".ttf,.otf,.woff,.woff2";
+
+const readFileAsDataURL = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
 export interface FontDescriptor {
   value: number;
@@ -122,7 +142,75 @@ export const FontPickerList = React.memo(
     const dnd = useFontPickerDnD();
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [customFonts, setCustomFonts] = useState<readonly SceneFontAsset[]>(
+      () => Array.from(Fonts.customFonts.values()),
+    );
     const inputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // applies a custom font: stores it on the scene and sets `fontRef` on
+    // selected text elements (or just the current item when nothing selected)
+    const applyCustomFont = useCallback(
+      (asset: SceneFontAsset) => {
+        const elements = app.scene.getElementsIncludingDeleted();
+        const appState = app.state;
+        const nextFonts = { ...appState.fonts, [asset.id]: asset };
+
+        const selectedTextElements = getSelectedElements(elements, appState, {
+          includeBoundTextElement: true,
+        }).filter(isTextElement);
+
+        if (selectedTextElements.length) {
+          for (const element of selectedTextElements) {
+            app.scene.mutateElement(element, { fontRef: asset.id });
+          }
+        }
+        app.setAppState({
+          fonts: nextFonts,
+          currentItemFontRef: asset.id,
+        } as unknown as AppState);
+      },
+      [app],
+    );
+
+    const handleFontFileUpload = useCallback(
+      async (file: File) => {
+        if (file.size > MAX_FONT_FILE_SIZE) {
+          console.error(
+            `Font file "${file.name}" exceeds maximum allowed size of 20MB`,
+          );
+          return;
+        }
+
+        try {
+          const buffer = await file.arrayBuffer();
+          const parsed = await parseFontFile(buffer, file.name);
+          const dataUrl = await readFileAsDataURL(file);
+
+          const asset: SceneFontAsset = {
+            id: parsed.id,
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            format: parsed.format,
+            data: dataUrl,
+            metrics: parsed.metrics,
+          };
+
+          await fonts.registerCustomFont(asset);
+          await saveCustomFontToStorage(asset);
+
+          setCustomFonts((prev) =>
+            prev.some((existing) => existing.id === asset.id)
+              ? prev
+              : [...prev, asset],
+          );
+
+          applyCustomFont(asset);
+        } catch (error) {
+          console.error(`Failed to load custom font "${file.name}"`, error);
+        }
+      },
+      [fonts, applyCustomFont],
+    );
     const allFonts = useMemo(
       () =>
         Array.from(Fonts.registered.entries())
@@ -380,6 +468,10 @@ export const FontPickerList = React.memo(
       );
     }
 
+    const filteredCustomFonts = customFonts.filter((asset) =>
+      asset.name.toLowerCase().includes(searchTerm),
+    );
+
     return (
       <PropertiesPopover
         className="properties-content"
@@ -416,7 +508,56 @@ export const FontPickerList = React.memo(
           placeholder={t("fontList.empty")}
         >
           {groups.length ? groups : null}
+          {filteredCustomFonts.length > 0 && (
+            <DropdownMenuGroup title="Custom Fonts" key="group_custom">
+              {filteredCustomFonts.map((asset) => (
+                <button
+                  key={asset.id}
+                  type="button"
+                  data-testid="font-picker-item-custom"
+                  className={getDropdownMenuItemClassName("", false, false)}
+                  title={asset.name}
+                  onClick={() => applyCustomFont(asset)}
+                >
+                  <MenuItemContent
+                    icon={FontFamilyNormalIcon}
+                    textStyle={{
+                      fontFamily: Fonts.getCustomFontFamilyName(asset.id),
+                    }}
+                  >
+                    {asset.name}
+                  </MenuItemContent>
+                </button>
+              ))}
+            </DropdownMenuGroup>
+          )}
         </ScrollableList>
+        <div className="FontPicker__custom-font-upload">
+          <button
+            type="button"
+            data-testid="font-picker-add-font"
+            className={getDropdownMenuItemClassName("", false, false)}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <MenuItemContent icon={FontFamilyNormalIcon}>
+              Add font
+            </MenuItemContent>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={FONT_FILE_ACCEPT}
+            style={{ display: "none" }}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                handleFontFileUpload(file);
+              }
+              // reset so picking the same file again re-triggers onChange
+              event.target.value = "";
+            }}
+          />
+        </div>
         {dnd && (
           <TopPicksTip
             className="FontPicker__tip"

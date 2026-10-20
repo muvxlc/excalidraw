@@ -38,6 +38,8 @@ import {
 
 import "./FontPicker.scss";
 
+import type { ExcalidrawFontFace } from "../../fonts/ExcalidrawFontFace";
+
 // length must equal FONT_TOP_PICKS_SLOTS (enforced by fontTopPicks.test.ts)
 export const DEFAULT_FONTS = [
   {
@@ -87,16 +89,41 @@ export const isDefaultFont = (fontFamily: number | null) => {
   return defaultFontFamilies.has(fontFamily);
 };
 
-const getTopPickFont = (fontFamily: FontFamilyValues) =>
-  DEFAULT_FONTS.find((font) => font.value === fontFamily) ?? {
+const resolveCustomFontName = (
+  fontFaces: readonly ExcalidrawFontFace[],
+): string | undefined => {
+  const family = fontFaces[0]?.fontFace?.family;
+  if (!family) {
+    return undefined;
+  }
+  for (const asset of Fonts.customFonts.values()) {
+    if (
+      family === asset.name ||
+      family === Fonts.getCustomFontFamilyName(asset.id)
+    ) {
+      return asset.name;
+    }
+  }
+  return undefined;
+};
+
+const getTopPickFont = (fontFamily: FontFamilyValues) => {
+  const known = DEFAULT_FONTS.find((font) => font.value === fontFamily);
+  if (known) {
+    return known;
+  }
+  const fontFaces = Fonts.registered.get(fontFamily)?.fontFaces ?? [];
+  return {
     value: fontFamily,
     icon: getFontFamilyIcon(fontFamily),
-    text: getFontFamilyLabel(
-      fontFamily,
-      Fonts.registered.get(fontFamily)?.fontFaces ?? [],
-    ),
+    // custom uploaded fonts aren't part of FONT_FAMILY — resolve their
+    // display label from the uploaded asset's name when possible
+    text:
+      resolveCustomFontName(fontFaces) ??
+      getFontFamilyLabel(fontFamily, fontFaces),
     testId: `font-family-${fontFamily}`,
   };
+};
 
 const needsGlyphSample = (
   fontFamily: FontFamilyValues,

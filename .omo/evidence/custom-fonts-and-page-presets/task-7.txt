@@ -1,0 +1,57 @@
+TASK 7: FontPicker custom font upload UI, custom font list, selection actions
+=============================================================================
+
+CHANGES
+-------
+1. packages/excalidraw/components/FontPicker/FontPickerList.tsx
+   - Hidden file input (accept=".ttf,.otf,.woff,.woff2") + "Add font" button
+     (data-testid="font-picker-add-font"), rendered under the font list.
+   - 20MB max file size check (MAX_FONT_FILE_SIZE) before parsing.
+   - Upload flow: file.arrayBuffer() -> parseFontFile(buffer, file.name)
+     from ../../fonts/fontParser -> SceneFontAsset { id, name (file name
+     without extension), format, data (dataURL via FileReader), metrics }.
+   - Registers via fonts.registerCustomFont(asset) (Fonts.registerCustomFont),
+     persists via saveCustomFontToStorage(asset) from ../../data/fontStorage.
+   - Updates appState.fonts with { ...appState.fonts, [asset.id]: asset } and
+     sets currentItemFontRef via app.setAppState.
+   - Applies fontRef: asset.id to selected text elements via
+     app.scene.mutateElement (getSelectedElements + isTextElement).
+   - Renders a "Custom Fonts" section (DropdownMenuGroup) with items
+     data-testid="font-picker-item-custom", labels use asset.name and the
+     registered CSS family (Fonts.getCustomFontFamilyName) for preview.
+
+2. packages/excalidraw/actions/actionProperties.tsx
+   - ChangeFontFamilyData gains optional currentItemFontRef?: FontAssetId|null.
+   - changeFontFamily perform():
+     - custom font selection (currentItemFontRef defined): sets
+       fontRef: nextFontRef on selected text elements (fontRef-only update
+       branch when no fontFamily change) and sets
+       appState.currentItemFontRef = nextFontRef.
+     - built-in font selection (currentItemFontFamily): sets fontRef: null on
+       selected text elements inside the existing newElementWith update and
+       sets appState.currentItemFontRef = null.
+     - hover previews leave fontRef untouched.
+
+3. packages/excalidraw/components/FontPicker/FontPicker.tsx
+   - getTopPickFont resolves custom uploaded fonts' display label from the
+     asset name (resolveCustomFontName) before falling back to
+     getFontFamilyLabel.
+
+NOTES
+-----
+- AppState has no currentItemFontRef field (types.ts out of scope); the value
+  flows through ChangeFontFamilyData/nextAppState spread and setAppState with
+  a cast.
+- app.updateScene is not exposed on AppClassProperties; used
+  app.setAppState + app.scene.mutateElement instead.
+- "Add font" / "Custom Fonts" strings hardcoded (locale files out of scope).
+
+VERIFY
+------
+$ yarn test:typecheck
+  $ tsc
+  Done in 15.04s.                                  exit 0
+$ yarn test:app packages/excalidraw/tests/fontTopPicks.test.ts --run
+  Test Files  1 passed (1)
+  Tests  3 passed (3)
+  Done in 7.85s.                                   exit 0

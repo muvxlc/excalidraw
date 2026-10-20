@@ -1,0 +1,19 @@
+Task 9: Canvas Paper Sheet rendering with boundaries and drop shadow
+
+Changes:
+- packages/excalidraw/renderer/staticScene.ts:
+  - Imported getPageDimensions from "@excalidraw/common".
+  - In _renderStaticScene (after zoom scale is applied to context):
+    - Added check for appState.pageModeEnabled && appState.pagePreset.
+    - Retrieved dimensions with getPageDimensions(appState.pagePreset, appState.pageOrientation).
+    - Calculated origin centered in scene space (originX = -dims.width / 2, originY = -dims.height / 2).
+    - Calculated screen-offset coords (x = originX + appState.scrollX, y = originY + appState.scrollY).
+    - Rendered drop shadow (rgba(0, 0, 0, 0.15), blur 12, offsetY 4) when not exporting.
+    - Filled paper rectangle with appState.viewBackgroundColor || "#ffffff".
+    - Rendered hairline border with strokeStyle #d0d0d0 and lineWidth 1 / appState.zoom.value.
+- packages/excalidraw/components/canvases/StaticCanvas.tsx:
+  - Extended getRelevantAppStateProps with pagePreset, pageOrientation, and pageModeEnabled to ensure static canvas updates on page state mutations.
+
+Verification:
+- Command: yarn test:typecheck
+- Exit code: 0

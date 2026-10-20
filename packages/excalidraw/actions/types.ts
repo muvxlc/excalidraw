@@ -96,6 +96,8 @@ export type ActionName =
   | "zoomToFit"
   | "zoomToFitSelection"
   | "zoomToFitSelectionInViewport"
+  | "changePagePreset"
+  | "togglePageOrientation"
   | "changeFontFamily"
   | "changeTextAlign"
   | "changeVerticalAlign"
