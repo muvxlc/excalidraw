@@ -23,6 +23,24 @@ describe("fontParser", () => {
     expect(parsed.metrics.lineHeight).toBeCloseTo(1.205, 3);
   });
 
+  it("parses OTF (CFF) font and extracts correct metrics", async () => {
+    const buffer = readFixture("TestSans-Regular.otf");
+    const parsed = await parseFontFile(buffer, "TestSans-Regular.otf");
+
+    expect(parsed.format).toBe("otf");
+    expect(parsed.id).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(parsed.metrics.unitsPerEm).toBe(1000);
+    expect(parsed.metrics.ascender).toBe(120);
+    expect(parsed.metrics.descender).toBe(0);
+  });
+
+  it("reports OTF format for CFF signature regardless of file extension", async () => {
+    const buffer = readFixture("TestSans-Regular.otf");
+    const parsed = await parseFontFile(buffer, "renamed.bin");
+
+    expect(parsed.format).toBe("otf");
+  });
+
   it("parses WOFF font and extracts correct metrics", async () => {
     const buffer = readFixture("TestSans-Regular.woff");
     const parsed = await parseFontFile(buffer, "TestSans-Regular.woff");
