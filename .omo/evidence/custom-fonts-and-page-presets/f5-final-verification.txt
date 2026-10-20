@@ -1,0 +1,89 @@
+F5. Final verification - aggregate of F1..F4
+============================================
+Repository : /Volumes/data/omo/excalidraw
+Branch     : master, HEAD 9bbdb7d0 (+ uncommitted working-tree changes listed below)
+Plan       : .omo/plans/custom-fonts-and-page-presets.md
+Evidence   : .omo/evidence/custom-fonts-and-page-presets/
+
+----------------------------------------------------------------
+VERDICT LINES
+----------------------------------------------------------------
+F1 (plan compliance)      : PASS   -> f1-plan-compliance.txt
+F2 (code quality)         : PASS   -> f2-code-quality.txt
+F3 (real browser QA)      : PASS   -> f3-browser-qa.txt
+F4 (ideal-state fidelity) : PASS   -> f4-ideal-state.txt
+
+----------------------------------------------------------------
+GATE COMMANDS (all run after the last code change)
+----------------------------------------------------------------
+yarn test:typecheck                        EXIT 0   (tsc, 33.99s clean run)
+yarn test:code                             EXIT 0   (eslint --max-warnings=0, 0 problems)
+yarn test <fonts canvas exportPagePreset FontPicker> --run
+                                           EXIT 0   5 files, 40 tests passed
+yarn build:app                             EXIT 0   built in 25.83s
+
+----------------------------------------------------------------
+FILES CHANGED IN THIS WORKING TREE
+----------------------------------------------------------------
+Production fixes (found by real-browser QA, each locked by a test):
+  excalidraw-app/components/AppMainMenu.tsx
+    + <MainMenu.DefaultItems.PageSetup />  (page presets had no UI entry point)
+  packages/excalidraw/components/LayerUI.tsx
+    + <MainMenu.DefaultItems.PageSetup />  (same, for the library default menu)
+  packages/excalidraw/components/FontPicker/FontPickerList.tsx
+    applyCustomFont now awaits document.fonts.load() and calls
+    redrawTextBoundingBox() so the text re-measures in the uploaded face
+    (previously fontRef was set but the element kept its old box and glyphs)
+  packages/excalidraw/actions/actionProperties.tsx
+    font picker close no longer restores the pre-open snapshot for elements whose
+    fontRef changed while the popup was open (previously silently reverted)
+  packages/excalidraw/renderer/staticScene.ts
+    page mode paints a gray workspace surface behind the sheet so the paper is a
+    distinct visible surface (previously the sheet used the same colour as the canvas)
+  packages/excalidraw/actions/actionCanvas.tsx
+    actionChangePagePreset centres the sheet in the viewport when leaving the
+    infinite canvas (previously it landed in the top-left corner)
+
+Tests added:
+  packages/excalidraw/components/FontPicker/FontPicker.test.tsx
+    + "keeps the custom font applied after the picker closes"
+    + "uploads an OTF font, lists it, and applies it to the selection"
+    + "rejects font files larger than 20 MiB"
+  packages/excalidraw/tests/canvas/pagePresets.test.ts
+    + "paper sheet rendering" describe (4 cases: sheet rect geometry, pan stability,
+      disabled page mode, null preset)
+    + "centres the sheet in the viewport when leaving the infinite canvas"
+  packages/excalidraw/tests/fonts/fontParser.test.ts
+    + OTF/CFF parsing cases
+  packages/excalidraw/tests/fixtures/fonts/TestSans-Regular.otf   (new fixture)
+
+----------------------------------------------------------------
+MUST-NOT CONSTRAINTS - re-checked
+----------------------------------------------------------------
+- Built-in font numbering untouched; reserved ID `4` not reused.        PASS
+- Custom display names never used as CSS `@font-face` family; the family is
+  `ExcalidrawCustom_<sha256 prefix>` derived from the content hash.       PASS
+- Async font load does not mutate stored element geometry beyond the intended
+  text re-measure (x/y untouched; only width/height of the text box).     PASS
+- No variable-font axis controls, no pagination, no binary font streaming over
+  WebSocket, no sheet re-centring on pan/zoom, no editor chrome in export. PASS
+- No new runtime npm packages (native DecompressionStream + existing WOFF2 wasm). PASS
+- Uploads over 20 MiB rejected with a user-facing error (tested).        PASS
+
+----------------------------------------------------------------
+WHAT REMAINS UNVERIFIED
+----------------------------------------------------------------
+- Collaboration channels: fonts are deliberately not streamed over WebSocket, so a
+  second collaborator does not receive the binary. This matches the plan's explicit
+  exclusion; cross-device transfer is proven only through the scene payload/reload path
+  (F3 STEP 3), not through a live two-client session.
+- WOFF/WOFF2 end-to-end upload was exercised by unit tests (parser + registration),
+  not through a browser file picker; only TTF and OTF were driven through real Chrome.
+- The 20 MiB rejection path was exercised in Vitest, not in the browser.
+
+----------------------------------------------------------------
+F5 VERDICT: PASS
+----------------------------------------------------------------
+All four verification gates pass, all six ideal-state rows are backed by an executed
+proving scenario with named artifacts, and the full gate set (typecheck, lint, tests,
+production build) is green on the final tree.

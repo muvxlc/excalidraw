@@ -1,0 +1,106 @@
+F2 CODE QUALITY EVIDENCE - custom-fonts-and-page-presets
+repo: /Volumes/data/omo/excalidraw
+baseline: e1b7aacb  HEAD: 9bbdb7d0  date: 2026-10-20T15:50:58Z
+
+===================================================================
+GATE 1: yarn test:typecheck  (cwd /Volumes/data/omo/excalidraw)
+===================================================================
+--- captured output (last 20 lines) ---
+yarn run v1.22.22
+$ tsc
+Done in 31.59s.
+EXIT:0
+--- end GATE 1 ---
+
+===================================================================
+GATE 2: yarn test:code  (cwd /Volumes/data/omo/excalidraw)
+===================================================================
+--- captured output (last 20 lines) ---
+yarn run v1.22.22
+$ eslint --max-warnings=0 --ext .js,.ts,.tsx .
+The prop value with an expression type of MetaProperty could not be resolved. Please file an issue ( https://github.com/jsx-eslint/jsx-ast-utils/issues/new ) to get this fixed immediately.
+The prop value with an expression type of MetaProperty could not be resolved. Please file an issue ( https://github.com/jsx-eslint/jsx-ast-utils/issues/new ) to get this fixed immediately.
+Done in 39.38s.
+EXIT:0
+--- end GATE 2 ---
+
+===================================================================
+GATE 3: yarn test:app --run packages/excalidraw/tests/fonts packages/excalidraw/tests/canvas/pagePresets.test.ts packages/excalidraw/tests/scene/exportPagePreset.test.ts packages/excalidraw/components/FontPicker/FontPicker.test.tsx  (cwd /Volumes/data/omo/excalidraw)
+===================================================================
+--- captured output (last 20 lines) ---
+
+ ✓ packages/excalidraw/tests/fonts/fontParser.test.ts (10 tests) 498ms
+ ✓ packages/excalidraw/tests/fonts/customFonts.test.ts (4 tests) 457ms
+ ✓ packages/excalidraw/tests/canvas/pagePresets.test.ts (7 tests) 8ms
+ ✓ packages/excalidraw/tests/scene/exportPagePreset.test.ts (3 tests) 367ms
+   ✓ exportPagePreset > exportToSvg > exports SVG with custom fontRef asserting embedded @font-face data URL 346ms
+ ✓ packages/excalidraw/components/FontPicker/FontPicker.test.tsx (6 tests) 2435ms
+   ✓ FontPicker > should be able to open font picker 350ms
+   ✓ FontPicker > top picks drag & drop > pins a font dragged from the list, replacing the hovered slot 483ms
+   ✓ FontPicker > top picks drag & drop > refuses pinning an already pinned font 388ms
+   ✓ FontPicker > top picks drag & drop > reorders picks dragged within the strip 424ms
+   ✓ FontPicker > top picks drag & drop > pads a short customized list with unpicked defaults 659ms
+
+ Test Files  5 passed (5)
+      Tests  30 passed (30)
+   Start at  22:49:28
+   Duration  11.47s (transform 5.40s, setup 7.58s, collect 18.15s, tests 3.76s, environment 4.58s, prepare 846ms)
+
+Done in 12.41s.
+EXIT:0
+--- end GATE 3 ---
+--- summary: 5 test files passed (5), 30 tests passed (30) ---
+
+===================================================================
+GATE 4: yarn build:app  (cwd /Volumes/data/omo/excalidraw)
+===================================================================
+--- captured output (last 20 lines) ---
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+
+ WARN  Browserslist: browsers data (caniuse-lite) is 20 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+ℹ
+PWA v0.21.1
+mode      generateSW
+precache  60 entries (6155.65 KiB)
+files generated
+  build/sw.js.map
+  build/sw.js
+  build/workbox-3631b453.js.map
+  build/workbox-3631b453.js
+✓ built in 23.39s
+Done in 36.66s.
+EXIT:0
+-rw-r--r--  1 kittisak.s  admin  6843 Oct 20 22:49 excalidraw-app/build/index.html
+--- end GATE 4 ---
+--- /Volumes/data/omo/excalidraw/excalidraw-app/build/index.html: EXISTS (    6843 bytes) ---
+
+===================================================================
+HYGIENE:
+===================================================================
+(a) forbidden new runtime dependency: command `git diff e1b7aacb..HEAD -- '*package.json'` produced NO output (no package.json touched in range; `git diff --stat` over '**/package.json' and yarn.lock also empty).
+    Added dependencies: none. PASS
+(b) reserved built-in font ID 4 not reused/renumbered: packages/common/src/constants.ts:143-154
+    export const FONT_FAMILY = {
+      Virgil: 1,
+      Helvetica: 2,
+      Cascadia: 3,
+      // leave 4 unused as it was historically used for Assistant (which we don't use anymore) or custom font (Obsidian)
+      Excalifont: 5,
+      Nunito: 6,
+      "Lilita One": 7,
+      "Comic Shanns": 8,
+      "Liberation Sans": 9,
+      Assistant: 10,
+    };
+    packages/common/src/font-metadata.ts keys fonts by FONT_FAMILY.* symbol (lines 53-140); no literal family id 4 anywhere.
+    Custom fonts key off FontAssetId `sha256:<hex>` (packages/common/src/font-metadata.ts:8), not numeric family ids.
+    PASS
+(c) mock leak in added test files: added tests are packages/excalidraw/tests/fonts/customFonts.test.ts, packages/excalidraw/tests/fonts/fontParser.test.ts, packages/excalidraw/tests/canvas/pagePresets.test.ts, packages/excalidraw/tests/scene/exportPagePreset.test.ts.
+    vi.mock/jest.mock occurrences in those four files: none (grep exit 1). Nothing to restore; no global state stubbed. PASS
+    Note: packages/excalidraw/components/FontPicker/FontPicker.test.tsx was NOT added in this range (exists at e1b7aacb); it uses vi.spyOn at line 42 and restores via afterEach(() => vi.restoreAllMocks()) at lines 62-63.
+
+F2 VERDICT: PASS

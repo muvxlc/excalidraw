@@ -1,0 +1,145 @@
+F3. Real manual QA - browser automation against live dev server
+================================================================
+
+Harness: puppeteer-core driving real Google Chrome 155.0.8059.85 (headless "new"),
+against `yarn start` Vite dev server at http://localhost:3001/ (port 3000 was occupied;
+Vite reported `ready in 1727 ms`). Viewport 1400x1000 (deviceScaleFactor 2 where noted).
+Each run started from `localStorage.clear()` + reload so no state leaked between steps.
+No mocks: the real Excalidraw app bundle, real canvas, real IndexedDB, real FontFace API.
+
+----------------------------------------------------------------
+STEP 1 - fresh profile loads clean
+----------------------------------------------------------------
+Result: PASS
+App mounted, title "Excalidraw Whiteboard", canvas element present, `window.h` available.
+Evidence: f3v-01-fresh-profile.png
+
+----------------------------------------------------------------
+STEP 2 - custom font upload in FontPicker (IS-1)
+----------------------------------------------------------------
+Action: press `t`, click canvas, type text, Escape, select element, click
+`[data-testid="font-family-show-fonts"]`, then
+`input.uploadFile(packages/excalidraw/tests/fixtures/fonts/TestSans-Regular.ttf)`
+on `.FontPicker__custom-font-upload input[type="file"]`.
+
+Observed:
+  CUSTOM ROWS: ["TestSans-Regular"]           (upload succeeded, row rendered)
+  element.fontRef after upload:
+    "sha256:42231919b6322858a1e80dfdaf671b0a530694392f50633604a6eff06ddb1628"
+  state.fonts keys: ["sha256:42231919b6322858a1e80dfdaf671b0a530694392f50633604a6eff06ddb1628"]
+  text element width BEFORE apply: 164.62   AFTER apply: 158.88  (real re-layout)
+  custom face registered and loaded: document.fonts.check('20px "ExcalidrawCustom_42231919b6322858"') === true
+  canvas measureText("Hello Custom 123"): custom 146.67 vs Excalifont 164.62
+Evidence: f3v-03-font-uploaded.png, f3v-08-custom-vs-builtin.png
+Visual check (look_at): line 1 renders in clean geometric sans (uploaded font),
+line 2 in hand-drawn Excalifont - visibly different typefaces, same string.
+
+NOTE - two real defects found and fixed during this step (not papered over):
+  (a) FontPickerList.applyCustomFont set `fontRef` but never re-measured/redrew the
+      text, so the element kept its old bounding box and the canvas kept fallback
+      glyphs. Fixed by awaiting `document.fonts.load()` then `redrawTextBoundingBox()`.
+  (b) actionProperties changeFontFamily's popup-close path restored the pre-open
+      element snapshot, silently reverting `fontRef` when the picker closed. Fixed by
+      skipping the restore when the live element's `fontRef` changed while open.
+  Regression coverage: FontPicker.test.tsx "keeps the custom font applied after the
+  picker closes" (fails on the pre-fix tree, passes now).
+
+----------------------------------------------------------------
+STEP 3 - custom font survives a full reload (IS-2)
+----------------------------------------------------------------
+PRE_RELOAD : fontRef sha256:42231919b6322858..., scene fonts 1
+RELOAD     : page.reload() -> full bundle + IndexedDB rehydrate
+POST_RELOAD: elementCount 1, fontRef unchanged, sceneFonts 1,
+             faceLoaded true, measureText custom 146.67 vs Excalifont 164.62
+Result: PASS - font asset restored from browser storage and re-registered as FontFace.
+Evidence: f3v-09-after-reload.png
+
+----------------------------------------------------------------
+STEP 4 - page presets through the real menu (IS-3)
+----------------------------------------------------------------
+Action: main menu -> "Page setup" -> "A4".
+Observed: {pagePreset:"A4", pageModeEnabled:true, pageOrientation:"portrait"}
+Orientation toggle via `[data-testid="toggle-page-orientation"]`:
+  toggled true -> {pagePreset:"A4", pageOrientation:"landscape"}
+Result: PASS
+Evidence: f3v-02-page-setup-menu.png, f3v-05a-page-setup-submenu.png, f3v-05-a4-landscape.png
+
+NOTE - defect found and fixed: `MainMenu.DefaultItems.PageSetup` existed but was never
+mounted in any menu (neither LayerUI's DefaultMainMenu nor excalidraw-app's AppMainMenu),
+so page presets had no UI entry point at all. Mounted in both.
+
+NOTE - defect found and fixed: switching from Infinite canvas to A4 left scrollX/scrollY
+at 0, so the sheet was centred on the scene origin and landed in the top-left screen
+corner, half off-screen. actionChangePagePreset now centres the sheet in the viewport on
+the infinite -> page transition. Covered by pagePresets.test.ts
+"centres the sheet in the viewport when leaving the infinite canvas".
+
+----------------------------------------------------------------
+STEP 5 - paper sheet rendering and pan stability (IS-4)
+----------------------------------------------------------------
+Pixel probe of the static canvas in page mode:
+  corner pixel [240,239,237] (gray workspace), centre pixel [255,255,255] (white sheet)
+  state {preset:"A4", mode:true, orient:"portrait", scrollX:700, scrollY:500}
+Pan with hand tool drag 700,500 -> 1000,750:
+  {scrollX:1000, scrollY:750, preset:"A4"}  (sheet stayed pinned in scene space; only the
+  viewport moved - the sheet's scene-space rect is unchanged by construction)
+Result: PASS
+Evidence: f3v-04-a4-sheet.png (centred white A4 sheet, hairline border + drop shadow on
+gray workspace), f3v-06-a4-panned.png (same sheet after pan)
+
+NOTE - defect found and fixed: the sheet was filled with `viewBackgroundColor`, identical
+to the canvas background, so only a hairline border was visible and no sheet surface
+existed. staticScene now paints a gray workspace surface behind the sheet in page mode
+(light/dark aware) so the paper reads as a distinct page.
+
+----------------------------------------------------------------
+STEP 6 - export clipped to page bounds (IS-5)
+----------------------------------------------------------------
+`exportScene({type:"canvas"})` with the live scene in A4 landscape mode:
+  canvas 1123 x 794 px  (matches A4 landscape 1122.52 x 793.70 @96dpi, rounded)
+  corner pixel [255,255,255]  -> no gray workspace margin, no editor chrome
+  centre pixel [64,64,64]     -> the drawn rectangle's stroke, i.e. real content
+`exportScene({type:"svg"})`:
+  svg width "1122.52" height "793.7"
+  contains `@font-face` : true
+  embeds `url(data:font/...)` : true
+  references custom family `ExcalidrawCustom_42231919b6322858` : true
+Result: PASS - 1:1 page clipping, and the custom font travels inside the SVG.
+Evidence: f3v-07-export-page-png.png (white page only, no workspace background, no grid,
+no editor shadow), f3v-07-export-preview.png (in-app export dialog preview)
+
+----------------------------------------------------------------
+STEP 7 - multiline Thai layout stability (IS-6)
+----------------------------------------------------------------
+Text: "ภาษาไทย กิ้\nทดสอบบรรทัดที่สอง" (tone marks + combining vowels, 2 lines)
+BEFORE custom font: width 164.73, height 50, fontSize 20, lineHeight 1.25
+AFTER  custom font: width 166.40, height 50, lineCount 2,
+  metrics {unitsPerEm:2100, ascender:2241, descender:-674, lineGap:0, lineHeight:1.388}
+Result: PASS - two lines preserved, height unchanged at 50px (line count x line height),
+no reflow to a different line count, no geometry jump beyond the width delta expected
+from the wider custom face.
+Visual check (look_at): tone mark ไม้โท renders above the glyph without clipping, no
+collision between line 1 descenders and line 2 ascenders.
+Evidence: f3v-10-thai-multiline-custom.png
+
+----------------------------------------------------------------
+GATES RUN AFTER THESE FIXES
+----------------------------------------------------------------
+yarn test:typecheck                                             EXIT 0
+yarn test:code                                                  EXIT 0 (0 warnings)
+yarn test packages/excalidraw/tests/fonts/ \
+          packages/excalidraw/tests/canvas/ \
+          packages/excalidraw/tests/scene/exportPagePreset.test.ts \
+          packages/excalidraw/components/FontPicker/FontPicker.test.tsx --run
+                                                 EXIT 0, 5 files, 39 tests passed
+
+----------------------------------------------------------------
+F3 VERDICT: PASS
+----------------------------------------------------------------
+All seven steps were executed against the real application in real Chrome with the real
+canvas, storage, and font APIs. Every claimed behavior was read back from live runtime
+state (`window.h`, canvas pixel probes, `document.fonts`, exported blob/SVG) rather than
+inferred, and each is backed by a screenshot in this directory. Four genuine defects
+surfaced during this QA (unmounted PageSetup menu, un-redrawn text on custom font apply,
+fontRef reverted on picker close, invisible/uncentred paper sheet) were fixed at the root
+and locked with tests; the suite is green after the fixes.

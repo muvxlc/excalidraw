@@ -1,0 +1,158 @@
+F4. Ideal-state fidelity audit - delivered behavior vs IS-1..IS-6
+==================================================================
+Source rows: `.omo/plans/custom-fonts-and-page-presets.md`, Success criteria table
+(line 250). Each IS row below is checked 1:1 against (a) the todo that delivers it,
+(b) a proving test or QA scenario that actually ran, and (c) a concrete artifact.
+
+Row-by-row:
+
+----------------------------------------------------------------
+IS-1  "User uploads custom font files (TTF/OTF/WOFF/WOFF2) via FontPicker;
+       fonts are immediately usable for text elements."
+----------------------------------------------------------------
+Delivering todos : 1 (types), 2 (parser), 4 (registry/FontFace), 7 (FontPicker UI)
+Delivering code  : FontPickerList.tsx upload handler -> parseFontFile ->
+                   Fonts.registerCustomFont -> applyCustomFont -> mutateElement(fontRef)
+                   -> document.fonts.load -> redrawTextBoundingBox
+Proving tests    : fontParser.test.ts - parses TTF/WOFF/WOFF2/OTF (incl. CFF `OTTO`)
+                   and reports format by signature, not extension;
+                   FontPicker.test.tsx - "uploads an OTF font, lists it, and applies it
+                   to the selection" and "keeps the custom font applied after the
+                   picker closes"
+Proving QA       : f3-browser-qa.txt STEP 2 (real Chrome)
+                   CUSTOM ROWS ["TestSans-Regular"], element.fontRef =
+                   sha256:42231919..., width 164.62 -> 158.88 (real re-layout),
+                   document.fonts.check(...) === true, measureText custom 146.67 vs
+                   Excalifont 164.62
+Artifacts        : .omo/evidence/.../f3v-03-font-uploaded.png,
+                   .omo/evidence/.../f3v-08-custom-vs-builtin.png,
+                   .omo/evidence/.../task-7.txt
+VERDICT: PASS - all four formats parse; upload applies immediately and visibly.
+
+----------------------------------------------------------------
+IS-2  "Scene files embed custom font assets in `fonts` payload; files open
+       identically on any device without missing font errors."
+----------------------------------------------------------------
+Delivering todos : 1 (SceneFontAsset/schema), 6 (serialize + restore + IndexedDB)
+Delivering code  : scene `fonts` map in AppState, serialized by serializeAsJSON,
+                   restored by restore()/restoreAppState, persisted to IndexedDB by
+                   data/fontStorage.ts, re-registered via Fonts.registerCustomFont
+Proving tests    : restore tests in the scene/data suites (custom `fonts` payload
+                   round-trip) + FontPicker upload tests asserting `state.fonts`
+Proving QA       : f3-browser-qa.txt STEP 3 (real Chrome)
+                   PRE_RELOAD fontRef sha256:42231919..., scene fonts 1
+                   -> page.reload() -> POST_RELOAD elementCount 1, fontRef unchanged,
+                   sceneFonts 1, faceLoaded true, measureText 146.67 vs 164.62
+Artifacts        : .omo/evidence/.../f3v-09-after-reload.png,
+                   .omo/evidence/.../task-6.txt
+VERDICT: PASS - asset and ref survive a cold reload with the face re-registered.
+
+----------------------------------------------------------------
+IS-3  "User can switch canvas between Infinite canvas and page presets
+       (A4/A5 portrait/landscape)."
+----------------------------------------------------------------
+Delivering todos : 3 (constants/AppState), 8 (menu + actions)
+Delivering code  : constants PAGE_PRESETS/getPageDimensions; actions
+                   actionChangePagePreset + actionTogglePageOrientation; menu item
+                   MainMenu.DefaultItems.PageSetup mounted in LayerUI and AppMainMenu
+Proving tests    : pagePresets.test.ts - dimensions for A4/A5 both orientations,
+                   "preserves center on actionChangePagePreset",
+                   "centres the sheet in the viewport when leaving the infinite canvas",
+                   "preserves center on actionTogglePageOrientation", toggle no-op when
+                   pagePreset === null
+Proving QA       : f3-browser-qa.txt STEP 4 (real Chrome, real menu clicks)
+                   menu -> Page setup -> A4 => {preset:"A4", pageModeEnabled:true,
+                   pageOrientation:"portrait"}; toggle => orientation "landscape"
+Artifacts        : .omo/evidence/.../f3v-02-page-setup-menu.png,
+                   .omo/evidence/.../f3v-05a-page-setup-submenu.png,
+                   .omo/evidence/.../f3v-05-a4-landscape.png,
+                   .omo/evidence/.../task-8.txt
+VERDICT: PASS - reachable from the UI, all presets and both orientations work.
+
+----------------------------------------------------------------
+IS-4  "Page preset displays a clear visual paper sheet boundary with subtle drop
+       shadow centered in scene space."
+----------------------------------------------------------------
+Delivering todo  : 9
+Delivering code  : staticScene.ts page-mode block - gray workspace surface, white sheet
+                   fill at scene-space origin (-w/2, -h/2) + scroll, hairline #d0d0d0
+                   border, rgba(0,0,0,0.15)/blur 12 shadow, offsetY 4 (editor only)
+Proving tests    : pagePresets.test.ts "paper sheet rendering" - A4 portrait emits
+                   strokeRect x~-396.85 y~-561.26 w~793.7 h~1122.52 with a matching
+                   fillRect; pan stability at scrollX 200 / scrollY 300;
+                   pageModeEnabled:false -> 0 strokeRect; pagePreset:null -> 0 strokeRect
+Proving QA       : f3-browser-qa.txt STEP 5 (real Chrome pixel probe)
+                   corner [240,239,237] gray workspace, centre [255,255,255] white sheet;
+                   after hand-tool pan scrollX/Y 700/500 -> 1000/750 with the sheet
+                   staying pinned in scene space
+Artifacts        : .omo/evidence/.../f3v-04-a4-sheet.png,
+                   .omo/evidence/.../f3v-06-a4-panned.png,
+                   .omo/evidence/.../task-9.txt
+VERDICT: PASS - sheet has a visible surface, border, shadow, and is pan-invariant.
+
+----------------------------------------------------------------
+IS-5  "Image and SVG export default to clipping to paper sheet bounds when page
+       mode is active."
+----------------------------------------------------------------
+Delivering todos : 10 (page clipping), 11 (SVG @font-face embedding)
+Delivering code  : scene/export.ts clips to getPageDimensions when pageModeEnabled &&
+                   pagePreset && no explicit x/y, sets padding 0 and fit "none";
+                   staticSvgScene embeds custom font bytes as data URLs
+Proving tests    : exportPagePreset.test.ts - PNG/SVG dimensions in page mode,
+                   export bounds equal page dims, SVG contains @font-face data URL
+Proving QA       : f3-browser-qa.txt STEP 6 (real Chrome, live exportScene)
+                   canvas 1123x794 (= A4 landscape @96dpi), corner [255,255,255] i.e. no
+                   workspace margin and no editor chrome, centre [64,64,64] i.e. content;
+                   SVG width 1122.52 height 793.7, @font-face present, data:font URL
+                   present, family ExcalidrawCustom_42231919b6322858 referenced
+Artifacts        : .omo/evidence/.../f3v-07-export-page-png.png,
+                   .omo/evidence/.../f3v-07-export-preview.png,
+                   .omo/evidence/.../task-10.txt, task-11.txt
+VERDICT: PASS - 1:1 page bounds, no editor artifacts, font embedded in SVG.
+
+----------------------------------------------------------------
+IS-6  "Text layout, wrapping, and vertical baseline offsets remain stable across
+       font loads and edits."
+----------------------------------------------------------------
+Delivering todos : 2 (metrics extraction), 5 (measure/wrap/render resolution),
+                   12 (test suites)
+Delivering code  : fontParser extracts unitsPerEm/ascender/descender/lineGap;
+                   registerCustomFontMetrics feeds the metrics table;
+                   getFontFamilyString prefixes the custom family so measure and render
+                   share one font string; getVerticalOffset uses the custom metrics
+Proving tests    : fontParser.test.ts metrics assertions (TTF and OTF),
+                   customFonts/measurement tests, FontPicker apply test asserting the
+                   element is re-measured after the face loads
+Proving QA       : f3-browser-qa.txt STEP 7 (real Chrome)
+                   "ภาษาไทย กิ้\nทดสอบบรรทัดที่สอง": before width 164.73 h 50,
+                   after width 166.40 h 50, lineCount 2, metrics
+                   {unitsPerEm:2100, ascender:2241, descender:-674, lineGap:0};
+                   tone mark renders above the glyph with no clipping, no line collision
+Artifacts        : .omo/evidence/.../f3v-10-thai-multiline-custom.png,
+                   .omo/evidence/.../task-12.txt
+VERDICT: PASS - line count and height stable, metrics-driven baseline, Thai marks intact.
+
+================================================================
+SHORTFALLS FOUND AND CLOSED (each became a real fix + test, no notes left behind)
+================================================================
+1. No UI entry point for page presets: PageSetup component existed but was mounted in
+   no menu. -> mounted in LayerUI.tsx and excalidraw-app/components/AppMainMenu.tsx.
+   Now covered by browser QA STEP 4.
+2. Custom font applied but text never re-measured/redrawn (element width stayed 164.62,
+   canvas kept fallback glyphs). -> FontPickerList.applyCustomFont now awaits
+   document.fonts.load() then redrawTextBoundingBox(). Covered by browser QA STEP 2.
+3. fontRef silently reverted when the font picker closed (actionProperties restored the
+   pre-open element snapshot). -> restore skipped when the live fontRef changed while
+   the popup was open. Covered by FontPicker.test.tsx
+   "keeps the custom font applied after the picker closes".
+4. Paper sheet invisible (filled with the same colour as the canvas background) and, when
+   leaving the infinite canvas, positioned at the top-left corner instead of centred.
+   -> gray workspace surface behind the sheet in staticScene.ts; centring scroll on the
+   infinite -> page transition in actionCanvas.tsx. Covered by pagePresets.test.ts
+   "centres the sheet in the viewport when leaving the infinite canvas" plus browser QA
+   STEP 5 pixel probe.
+
+Every one of the six IS rows therefore has a delivering todo, a proving scenario that
+actually executed, and a named artifact in this directory.
+
+F4 VERDICT: PASS

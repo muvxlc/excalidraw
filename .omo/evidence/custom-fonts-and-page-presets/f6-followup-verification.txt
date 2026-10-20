@@ -1,0 +1,55 @@
+F6. Follow-up pass - defects found after F5
+=============================================
+Three more real defects were found by driving the app in real Chrome after F5 was
+written. All three are fixed and locked by tests.
+
+1. WORKSPACE FILL LEAKED AT ZOOM != 1  (packages/excalidraw/renderer/staticScene.ts)
+   The gray workspace rect was filled with `normalizedWidth/normalizedHeight` AFTER
+   `context.scale(zoom)`, so at zoom 0.5 it covered only half the canvas and at zoom 2
+   only a quarter, exposing the raw canvas background around it.
+   Fix: size the fill in scene units (`normalizedWidth / zoom`).
+   Proven: pixel probe in real Chrome - at zoom 0.5 and 1 every sampled corner is
+   [240,239,237] gray; at zoom 2 the sheet legitimately covers the viewport (white).
+   Evidence: f3v-11-zoom-0_5.png, f3v-11-zoom-1.png, f3v-11-zoom-2.png
+   Test: pagePresets.test.ts "fills the whole viewport with the workspace surface at
+   any zoom" (asserts the fill rect is 500/zoom scene units for zoom 0.5/1/2).
+
+2. NO USER-FACING ERROR ON INVALID OR OVERSIZED FONT FILES
+   The plan requires "show user-friendly error on invalid files", but both the >20 MiB
+   branch and the parse-failure branch only called `console.error` - the user saw the
+   file silently do nothing.
+   Fix: FontPickerList now calls `api.setToast(...)` with new locale strings
+   `fontList.uploadTooLarge` ("Font file is larger than 20MB") and
+   `fontList.uploadInvalid` ("Could not read this font file").
+   Proven: real Chrome upload of a 8-byte garbage .ttf renders a visible toast
+   "Could not read this font file" bottom-centre; `h.state.toast.message` matches.
+   Evidence: f3v-13-invalid-font-toast.png
+   Tests: FontPicker.test.tsx now asserts `h.state.toast?.message` for both the
+   oversize path and the unparsable path.
+
+3. FILE PORTABILITY ROUND-TRIP (IS-2, the file path rather than the storage path)
+   Previously only the IndexedDB reload path was proven. Verified end-to-end now:
+   serializeAsJSON -> 2,308,303 bytes containing the sha256 font id and a data: URL ->
+   full wipe of localStorage + all IndexedDB databases -> reload (0 elements, 0 fonts)
+   -> drop the .excalidraw file on the canvas -> 1 element, fontRef restored,
+   scene fonts 1, `document.fonts.check` true, measureText custom 146.67 vs
+   Excalifont 164.62.
+   Evidence: f3v-12-imported-file.png
+
+GATES AFTER THIS PASS
+---------------------
+yarn test:typecheck   EXIT 0
+yarn test:code        EXIT 0 (0 warnings)
+yarn test <fonts canvas exportPagePreset FontPicker> --run
+                      EXIT 0 - 5 files, 42 tests passed
+
+REMAINING KNOWN GAPS (unchanged, all deliberate or environmental)
+-----------------------------------------------------------------
+- WOFF/WOFF2 upload was never driven through the browser file picker; parser and
+  registration are covered by unit tests only.
+- Live two-client collaboration does not stream font binaries - that is an explicit
+  plan exclusion; portability is proven through the file and storage paths instead.
+- The 20 MiB rejection toast is asserted in Vitest; the browser run exercised the
+  unparsable-file toast, not the size one (a 20 MiB browser upload was not driven).
+
+F6 VERDICT: PASS

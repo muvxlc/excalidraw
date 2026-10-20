@@ -1,0 +1,75 @@
+F1 PLAN COMPLIANCE AUDIT - custom-fonts-and-page-presets
+Date: 2026-10-20
+Plan: .omo/plans/custom-fonts-and-page-presets.md (251 lines)
+Base: e1b7aacb  HEAD: 9bbdb7d0
+
+APPLIED GATE (as specified for F1):
+  A todo is DELIVERED iff (a) a real commit sha in this repo contains its
+  implementation/evidence files, and (b) its recorded evidence file exists
+  under .omo/evidence/custom-fonts-and-page-presets/ with non-zero bytes.
+  ACCEPTANCE judges the plan's own acceptance criteria against source and
+  tests actually present at HEAD; it is reported per row and does not
+  silently rewrite the gate.
+  Audit scope was read-only: no builds and no test suites were executed by
+  this node; every PASS below is grounded in git objects, on-disk evidence,
+  or source read at HEAD.
+
+COMMIT INVENTORY (git log --oneline -7, verified):
+  9bbdb7d0 docs: update evidence files for wave 4            (HEAD)
+  dfd649ec fix(build): increase workbox maximumFileSizeToCacheInBytes to 5MB
+  e6b55fed feat(export): integrate page preset export cropping, SVG @font-face embedding, and comprehensive tests
+  355fc5a4 feat(ui): add font upload UI, page preset controls, and canvas paper sheet rendering
+  43ce8aa9 feat(runtime): integrate custom font loading, measurement, and persistence
+  47f0d4c0 feat(core): implement core schemas, OpenType parser, and page preset configuration
+  e1b7aacb base
+
+EVIDENCE BYTE COUNTS (wc -c, verified this run):
+  task-1.txt 1204 | task-2.txt 2214 | task-3.txt 1630 | task-4.txt 2225
+  task-5.txt 2209 | task-6.txt 1680 | task-7.txt 2831 | task-8.txt 1442
+  task-9.txt 1161 | task-10.txt 446 | task-11.txt 497  | task-12.txt 987
+  wave1-verification.txt 545 | wave2-verification.txt 1691
+  wave3-verification.txt 844 | wave4-verification.txt 896
+
+TODO 1 | COMMIT 47f0d4c0 | EVIDENCE task-1.txt present, 1204 bytes | ACCEPTANCE PASS | FontAssetId/FontFormat/SceneFontAsset/SceneFonts at packages/common/src/font-metadata.ts:8-23, fontRef?: FontAssetId|null at packages/element/src/types.ts:261, unitsPerEm widened to number at font-metadata.ts:32, re-exported at packages/common/src/index.ts:8; FONT_FAMILY untouched.
+TODO 2 | COMMIT 47f0d4c0 | EVIDENCE task-2.txt present, 2214 bytes | ACCEPTANCE FAIL | Parser detects OTTO (packages/excalidraw/fonts/fontParser.ts:22,338) and 10 parser tests pass in evidence, but criterion names TTF, OTF, WOFF and WOFF2 fixtures with identical metrics: fixtures are only TestSans-Regular.ttf/.woff/.woff2 + TestThai-Regular.ttf, and fontParser.test.ts has zero OTF case - OTF path is untested.
+TODO 3 | COMMIT 47f0d4c0 | EVIDENCE task-3.txt present, 1630 bytes | ACCEPTANCE PASS | PAGE_PRESETS/getPageDimensions at packages/common/src/constants.ts:624-651 (A4 portrait 793.70x1122.52 asserted in packages/excalidraw/tests/canvas/pagePresets.test.ts:19-30); defaults pagePreset:null/pageOrientation/pageModeEnabled at packages/excalidraw/appState.ts:146-149 with storage conf at :295-298.
+TODO 4 | COMMIT 43ce8aa9 | EVIDENCE task-4.txt present, 2225 bytes | ACCEPTANCE PASS | registerCustomFont adds FontFace to ownerDocument.fonts and awaits fontFace.load() with per-document WeakMap dedupe at packages/excalidraw/fonts/Fonts.ts:92-131; css family is ExcalidrawCustom_<16 hex> at Fonts.ts:70. Note: verified by source read only, no dedicated unit test for the document.fonts.has assertion.
+TODO 5 | COMMIT 43ce8aa9 | EVIDENCE task-5.txt present, 2209 bytes | ACCEPTANCE PASS | getFontFamilyString/getFontString take fontRef and prefix the custom family at packages/common/src/utils.ts:122-157; getVerticalOffset/getLineHeight resolve CUSTOM_FONT_METRICS at packages/common/src/font-metadata.ts; renderElement.ts:659 passes element.fontRef; textWysiwyg.tsx:326,827 pass fontRef.
+TODO 6 | COMMIT 43ce8aa9 | EVIDENCE task-6.txt present, 1680 bytes | ACCEPTANCE PASS | serializeAsJSON emits fonts when non-empty at packages/excalidraw/data/json.ts:74-75; restoreElements validates sha256 fontRef and drops invalid refs at packages/excalidraw/data/restore.ts:574-603; restoreAppState restores imported fonts at restore.ts:1405; fontStorage.ts added. Note: no bit-for-bit JSON round-trip test exists (only exportPagePreset.test.ts seeds a fonts map), so this rests on source read plus the 69-test restore suite cited in task-6.txt.
+TODO 7 | COMMIT 355fc5a4 | EVIDENCE task-7.txt present, 2831 bytes | ACCEPTANCE FAIL | Upload UI exists (MAX_FONT_FILE_SIZE 20MiB at FontPickerList.tsx:61,178; registerCustomFont at :198; data-testid font-picker-item-custom at :517 and font-picker-add-font at :538; currentItemFontRef at FontPickerList.tsx:170), but the plan's acceptance QA is a FontPicker.test.tsx run with userEvent.upload + currentItemFontRef assertion: that test file contains only open-picker and top-picks drag/drop cases (no upload, no font-picker-item-custom, no currentItemFontRef), and task-7.txt instead cites fontTopPicks.test.ts.
+TODO 8 | COMMIT 355fc5a4 | EVIDENCE task-8.txt present, 1442 bytes | ACCEPTANCE PASS | actionChangePagePreset sets pagePreset/pageModeEnabled/orientation and preserves sheet center at packages/excalidraw/actions/actionCanvas.tsx:435-476; actionTogglePageOrientation returns false when pagePreset is null at actionCanvas.tsx:477-485; both behaviors asserted in packages/excalidraw/tests/canvas/pagePresets.test.ts:66-130. Note: null no-op and menu wiring are code-backed only (no UI test); task-8.txt records typecheck alone, the action tests are in pagePresets.test.ts.
+TODO 9 | COMMIT 355fc5a4 | EVIDENCE task-9.txt present, 1161 bytes | ACCEPTANCE FAIL | Paper sheet render exists at packages/excalidraw/renderer/staticScene.ts:313-336 (originX = -width/2 at :319, screen offset x = originX + scrollX at :321, shadow gated on !isExporting at :324, border #d0d0d0 at :332), but the plan's acceptance QA requires a StaticCanvas test asserting strokeRect at originX=-396.85/originY=-561.26/793.70x1122.52 and stability under scrollX=200,scrollY=300: pagePresets.test.ts contains no strokeRect, StaticCanvas, or renderStaticScene reference, and task-9.txt records typecheck alone.
+TODO 10 | COMMIT e6b55fed | EVIDENCE task-10.txt present, 446 bytes | ACCEPTANCE PASS | configExportDimension overrides crop to paper bounds with padding 0 / fit "none" when pageModeEnabled && pagePreset && !exportingFrame && no explicit x/y at packages/excalidraw/scene/export.ts:622-643; exact 794x1123 at 1x asserted at packages/excalidraw/tests/scene/exportPagePreset.test.ts:30-31 and passing in task-12.txt. Note: task-10.txt itself only records typecheck; the dimension proof lives in the exportPagePreset suite. The plan's "exportSelected" failure case has no test.
+TODO 11 | COMMIT e6b55fed | EVIDENCE task-11.txt present, 497 bytes | ACCEPTANCE PASS | generateFontFaceDeclarations accepts sceneFonts and emits @font-face with the ExcalidrawCustom_ family and full asset data URL (no HarfBuzz subsetting) at packages/excalidraw/fonts/Fonts.ts:291-318; export.ts passes scene fonts through. Assertion of <style class="style-fonts"> containing @font-face + url(data:) + format('woff2') exists at packages/excalidraw/tests/scene/exportPagePreset.test.ts:62-118 (plan named exportSvgFonts.test.ts; coverage landed in this file instead). task-11.txt itself records typecheck only.
+TODO 12 | COMMIT e6b55fed (+9bbdb7d0 rewrote task-12.txt) | EVIDENCE task-12.txt present, 987 bytes | ACCEPTANCE PASS | Three suites green (customFonts 4, pagePresets 7, exportPagePreset 3 = 14 tests, task-12.txt) and wave4-verification.txt records 4 suites / 24 tests with typecheck and eslint at exit 0; suites live at packages/excalidraw/tests/fonts/customFonts.test.ts, tests/canvas/pagePresets.test.ts, tests/scene/exportPagePreset.test.ts with the four font fixtures committed in 47f0d4c0. Note: no evidence of a full-repo `yarn test:app --run`, and the 1000/2100 unitsPerEm assertions mean the fixtures are synthetic rather than production font files.
+
+GAPS:
+  Gate check (real commit sha + non-empty evidence file): NONE - all 12 todos
+  are carried by one of 47f0d4c0, 43ce8aa9, 355fc5a4, e6b55fed, 9bbdb7d0
+  (dfd649ec is a supporting workbox build fix, not a todo) and every task-1..12
+  evidence file is non-zero (446-2831 bytes).
+  ACCEPTANCE GAPS (do not affect the F1 gate under its stated definition):
+  - TODO 2: no OTF fixture and no OTF case in fontParser.test.ts; the OTF
+    decode path is asserted only by signature detection in source.
+  - TODO 7: no upload test; FontPicker.test.tsx never exercises
+    userEvent.upload, font-picker-item-custom, or currentItemFontRef, so the
+    plan's named acceptance QA is not executed anywhere.
+  - TODO 9: no renderer test; the strokeRect origin/pan-stability assertions
+    named in the plan do not exist in pagePresets.test.ts.
+  - Weak evidence (typecheck only, proof lives elsewhere): TODO 4, 8, 10, 11.
+  - Missing negative-case coverage named by the plan: TODO 10
+    (exportSelected override), TODO 11 (font asset missing fallback),
+    TODO 8 (orientation toggle no-op when pagePreset is null).
+
+MUST-NOT CHECK:
+  1. no renumbering of built-in FONT_FAMILY | PASS | packages/common/src/constants.ts:143-154 - `git diff e1b7aacb HEAD -- packages/common/src/constants.ts` shows only appended PAGE_PRESETS/getPageDimensions at :624-651, no change inside the FONT_FAMILY block.
+  2. no reuse of reserved font ID 4 | PASS | packages/common/src/constants.ts:147 - "leave 4 unused" comment retained and no FONT_FAMILY member carries the value 4 (members 1,2,3,5,6,7,8,9,10).
+  3. no user display names used as CSS @font-face family | PASS | packages/excalidraw/fonts/Fonts.ts:70 and :312-315 - family is `ExcalidrawCustom_${hash.slice(0,16)}`; asset.name appears only as picker label in FontPickerList.tsx.
+  4. no element geometry mutation on async font load | PASS | packages/excalidraw/fonts/Fonts.ts:115-120 - the load handler only clears charWidth cache, destroys ShapeCache, and adds the family to loadedFontsCache; `grep -n "mutateElement\|versionNonce" packages/excalidraw/fonts/Fonts.ts` returns nothing.
+  5. no variable-font axis UI | PASS | `grep -rn "fontVariationSettings\|wght\|font-stretch\|variableFont" packages/excalidraw/components/ packages/excalidraw/fonts/` returns no hits (only pre-existing commented harfbuzz axis code at subset/harfbuzz/harfbuzz-bindings.ts:109-150).
+  6. no multi-page pagination | PASS | `grep -rn "pageCount\|numPages\|pagination\|multiPage" packages/excalidraw packages/common packages/element excalidraw-app --include=*.ts --include=*.tsx` returns no hits; pagePreset is a single sheet (appState.ts:146-149).
+  7. no binary font streaming over collab WebSocket | PASS | `grep -rn "SceneFont\|fontRef\|fonts" excalidraw-app/collab/ excalidraw-app/data/` returns no hits - fonts ride only in scene JSON (data/json.ts:74-75) and IndexedDB (data/fontStorage.ts).
+  8. no paper sheet moving on pan/zoom | PASS | packages/excalidraw/renderer/staticScene.ts:319-321 - originX/originY are pure scene-space constants (-width/2, -height/2) and scrollX/scrollY are added only when drawing, so the sheet stays pinned to scene coordinates.
+  9. no editor shadow/background/grid in page export | PASS | packages/excalidraw/renderer/staticScene.ts:324 (shadow applied only `if (!isExporting)`) and packages/excalidraw/scene/export.ts:855-856 (`renderGrid: false`, `isExporting: true`).
+
+F1 VERDICT: PASS
