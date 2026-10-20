@@ -2,7 +2,14 @@ export * from "./binary-heap";
 export * from "./bounds";
 export * from "./colors";
 export * from "./constants";
+export type { PagePreset, PageOrientation } from "./constants";
 export * from "./font-metadata";
+export type {
+  FontAssetId,
+  FontFormat,
+  SceneFontAsset,
+  SceneFonts,
+} from "./font-metadata";
 export * from "./queue";
 export * from "./keys";
 export * from "./points";

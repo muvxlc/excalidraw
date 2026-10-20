@@ -1,0 +1,41 @@
+=== Task 3 Verification Evidence ===
+Timestamp: 2026-10-20
+Status: Passed
+
+1. Defined Page Presets & Math in packages/common/src/constants.ts:
+- PAGE_PRESET_NAMES = { A4: "A4", A5: "A5" } as const;
+- PAGE_PRESETS = { A4: { widthMm: 210, heightMm: 297 }, A5: { widthMm: 148, heightMm: 210 } } as const;
+- PagePreset and PageOrientation exported types.
+- getPageDimensions(preset, orientation = "portrait") conversion function with 96 DPI:
+    A4 portrait: 793.70 x 1122.52 px
+    A4 landscape: 1122.52 x 793.70 px
+    A5 portrait: 559.37 x 793.70 px
+    A5 landscape: 793.70 x 559.37 px
+
+2. Re-exported in packages/common/src/index.ts:
+- PAGE_PRESET_NAMES, PAGE_PRESETS, getPageDimensions, PagePreset, PageOrientation.
+
+3. Updated packages/excalidraw/types.ts:
+- Imported PagePreset, PageOrientation, SceneFonts from "@excalidraw/common".
+- AppState extended with pagePreset, pageOrientation, pageModeEnabled, fonts?.
+- StaticCanvasAppState and InteractiveCanvasAppState extended with pagePreset, pageOrientation, pageModeEnabled.
+
+4. Updated packages/excalidraw/appState.ts:
+- getDefaultAppState() configured with:
+    pagePreset: null,
+    pageOrientation: "portrait",
+    pageModeEnabled: false,
+    fonts: {},
+- APP_STATE_STORAGE_CONF configured with:
+    pagePreset: { browser: true, export: true, server: true },
+    pageOrientation: { browser: true, export: true, server: true },
+    pageModeEnabled: { browser: true, export: true, server: true },
+    fonts: { browser: true, export: true, server: true },
+
+5. Typecheck verification:
+Command: yarn test:typecheck
+Exit code: 0
+Output:
+yarn run v1.22.22
+$ tsc
+Done in 16.20s.

@@ -1,0 +1,34 @@
+TASK-1 EVIDENCE: Additive custom font types and FontMetadata unitsPerEm widening
+
+1. Modified files:
+   - packages/common/src/font-metadata.ts:
+     - Exported type FontAssetId = `sha256:${string}`;
+     - Exported type FontFormat = "ttf" | "otf" | "woff" | "woff2";
+     - Exported interface SceneFontAsset {
+         id: FontAssetId;
+         name: string;
+         format: FontFormat;
+         data: string;
+         metrics: {
+           unitsPerEm: number;
+           ascender: number;
+           descender: number;
+           lineGap?: number;
+           lineHeight?: number;
+         };
+       }
+     - Exported type SceneFonts = Record<FontAssetId, SceneFontAsset>;
+     - Widened FontMetadata.metrics.unitsPerEm from "1000 | 1024 | 2048" to "number".
+   - packages/common/src/index.ts:
+     - Re-exported { FontAssetId, FontFormat, SceneFontAsset, SceneFonts } from "./font-metadata".
+   - packages/element/src/types.ts:
+     - Imported and re-exported FontAssetId from "@excalidraw/common".
+     - Added optional fontRef?: FontAssetId | null to ExcalidrawTextElement.
+
+2. Verification:
+   Command: yarn test:typecheck
+   Output:
+   yarn run v1.22.22
+   $ tsc
+   Done in 15.83s.
+   Exit code: 0

@@ -5,6 +5,9 @@ import type {
   MIME_TYPES,
   EditorInterface,
   StrokeWidthKey,
+  PagePreset,
+  PageOrientation,
+  SceneFonts,
 } from "@excalidraw/common";
 
 import type { LinearElementEditor } from "@excalidraw/element";
@@ -220,11 +223,17 @@ export type StaticCanvasAppState = Readonly<
     suggestedBinding: AppState["suggestedBinding"];
     // Cropping
     croppingElementId: AppState["croppingElementId"];
+    pagePreset?: AppState["pagePreset"];
+    pageOrientation?: AppState["pageOrientation"];
+    pageModeEnabled?: AppState["pageModeEnabled"];
   }
 >;
 
 export type InteractiveCanvasAppState = Readonly<
   _CommonCanvasAppState & {
+    pagePreset?: AppState["pagePreset"];
+    pageOrientation?: AppState["pageOrientation"];
+    pageModeEnabled?: AppState["pageModeEnabled"];
     activeTool: AppState["activeTool"];
     // renderInteractiveScene
     activeEmbeddable: AppState["activeEmbeddable"];
@@ -587,6 +596,11 @@ export interface AppState {
   /** user-customized font-picker top picks (pinned via drag & drop from the
    * font picker popup). `null` means no customization (defaults are used) */
   fontTopPicks: readonly FontFamilyValues[] | null;
+
+  pagePreset: PagePreset | null;
+  pageOrientation: PageOrientation;
+  pageModeEnabled: boolean;
+  fonts?: SceneFonts;
 }
 
 export type SearchMatch = {

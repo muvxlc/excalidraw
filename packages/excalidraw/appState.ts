@@ -143,6 +143,10 @@ export const getDefaultAppState = (): Omit<
       stickyNoteBackground: null,
     },
     fontTopPicks: null,
+    pagePreset: null,
+    pageOrientation: "portrait",
+    pageModeEnabled: false,
+    fonts: {},
   };
 };
 
@@ -288,6 +292,10 @@ const APP_STATE_STORAGE_CONF = (<
   bindMode: { browser: true, export: false, server: false },
   colorTopPicks: { browser: true, export: false, server: false },
   fontTopPicks: { browser: true, export: false, server: false },
+  pagePreset: { browser: true, export: true, server: true },
+  pageOrientation: { browser: true, export: true, server: true },
+  pageModeEnabled: { browser: true, export: true, server: true },
+  fonts: { browser: true, export: true, server: true },
 });
 
 const _clearAppStateForStorage = <

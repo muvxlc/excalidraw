@@ -1,0 +1,47 @@
+TASK-2 EVIDENCE: OpenType font parser with WOFF/WOFF2 decompression and metrics extractor
+
+1. Created files:
+   - packages/excalidraw/fonts/fontParser.ts:
+     - Detects font signatures:
+       - SFNT TrueType: 0x00010000
+       - SFNT OpenType CFF: 0x4F54544F ("OTTO")
+       - WOFF 1.0: 0x774F4646 ("wOFF")
+       - WOFF 2.0: 0x774F4632 ("wOF2")
+       - TrueType Collection: 0x74746366 ("ttcf")
+     - Decompression:
+       - WOFF 2.0: invokes loadWoff2() WebAssembly decompressor to yield SFNT bytes
+       - WOFF 1.0: inflates compressed tables via DecompressionStream("deflate") with zlib fallback and reassembles standard SFNT table directory and aligned table data
+       - TTF / OTF / TTC: reads SFNT table records directly (first font header for TTC)
+     - Metrics extraction:
+       - head: unitsPerEm (Uint16 at offset 18)
+       - hhea: ascender (Int16 at 4), descender (Int16 at 6), lineGap (Int16 at 8)
+       - OS/2: sTypoAscender (Int16 at 68), sTypoDescender (Int16 at 70), sTypoLineGap (Int16 at 72)
+       - Unitless lineHeight calculation
+     - SHA-256 content-addressed ID generation (sha256:<hex>)
+     - Validation: 20MB size guard and descriptive truncation/corruption errors
+     - Exports: ParsedFontMetrics, ParsedFont, parseFontFile
+   - packages/excalidraw/tests/fonts/fontParser.test.ts:
+     - Tests TestSans-Regular.ttf
+     - Tests TestSans-Regular.woff
+     - Tests TestSans-Regular.woff2
+     - Tests TestThai-Regular.ttf
+     - Verifies identical metrics (unitsPerEm, ascender, descender, lineGap, lineHeight) across TTF, WOFF, and WOFF2
+     - Verifies oversized (>20MB) and malformed/truncated buffer rejections
+
+2. Verification:
+   Command: yarn test:app packages/excalidraw/tests/fonts/fontParser.test.ts --run
+   Output:
+   yarn run v1.22.22
+   $ vitest packages/excalidraw/tests/fonts/fontParser.test.ts --run
+
+    RUN  v3.0.6 /Volumes/data/omo/excalidraw
+
+    ✓ packages/excalidraw/tests/fonts/fontParser.test.ts (10 tests) 359ms
+
+    Test Files  1 passed (1)
+         Tests  10 passed (10)
+      Start at  14:58:48
+      Duration  3.31s (transform 295ms, setup 1.29s, collect 246ms, tests 359ms, environment 745ms, prepare 164ms)
+
+   Done in 4.08s.
+   Exit code: 0

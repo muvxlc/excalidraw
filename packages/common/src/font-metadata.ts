@@ -5,6 +5,23 @@ import type {
 
 import { FONT_FAMILY, FONT_FAMILY_FALLBACKS } from "./constants";
 
+export type FontAssetId = `sha256:${string}`;
+export type FontFormat = "ttf" | "otf" | "woff" | "woff2";
+export interface SceneFontAsset {
+  id: FontAssetId;
+  name: string;
+  format: FontFormat;
+  data: string;
+  metrics: {
+    unitsPerEm: number;
+    ascender: number;
+    descender: number;
+    lineGap?: number;
+    lineHeight?: number;
+  };
+}
+export type SceneFonts = Record<FontAssetId, SceneFontAsset>;
+
 /**
  * Encapsulates font metrics with additional font metadata.
  * */
@@ -12,7 +29,7 @@ export interface FontMetadata {
   /** for head & hhea metrics read the woff2 with https://fontdrop.info/ */
   metrics: {
     /** head.unitsPerEm metric */
-    unitsPerEm: 1000 | 1024 | 2048;
+    unitsPerEm: number;
     /** hhea.ascender metric */
     ascender: number;
     /** hhea.descender metric */

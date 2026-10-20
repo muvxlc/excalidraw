@@ -624,3 +624,29 @@ export const MOBILE_ACTION_BUTTON_BG = {
 
 export const DEFAULT_STROKE_STREAMLINE = 0.5;
 export const DEFAULT_STROKE_STREAMLINE_PRECISE = 0.2;
+
+export const PAGE_PRESET_NAMES = { A4: "A4", A5: "A5" } as const;
+
+export const PAGE_PRESETS = {
+  A4: { widthMm: 210, heightMm: 297 },
+  A5: { widthMm: 148, heightMm: 210 },
+} as const;
+
+export type PagePreset = keyof typeof PAGE_PRESETS;
+export type PageOrientation = "portrait" | "landscape";
+
+export function getPageDimensions(
+  preset: PagePreset | null,
+  orientation: PageOrientation = "portrait",
+): { width: number; height: number } | null {
+  if (!preset || !PAGE_PRESETS[preset]) {
+    return null;
+  }
+  const { widthMm, heightMm } = PAGE_PRESETS[preset];
+  const wMm = orientation === "landscape" ? heightMm : widthMm;
+  const hMm = orientation === "landscape" ? widthMm : heightMm;
+  return {
+    width: Math.round(((wMm * 96) / 25.4) * 100) / 100,
+    height: Math.round(((hMm * 96) / 25.4) * 100) / 100,
+  };
+}
