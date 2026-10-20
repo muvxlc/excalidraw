@@ -1,4 +1,6 @@
 import { getPageDimensions } from "@excalidraw/common";
+import * as Element from "@excalidraw/element";
+import rough from "roughjs/bin/rough";
 
 import {
   actionChangePagePreset,
@@ -11,7 +13,13 @@ import {
   getDefaultAppState,
 } from "../../appState";
 import { restoreAppState } from "../../data/restore";
+import * as StaticScene from "../../renderer/staticScene";
+import { Renderer } from "../../scene/Renderer";
 
+import type {
+  RenderableElementsMap,
+  StaticCanvasRenderConfig,
+} from "../../scene/types";
 import type { AppState } from "../../types";
 
 describe("pagePresets", () => {
@@ -94,6 +102,27 @@ describe("pagePresets", () => {
       expect(nextCenterY).toBeCloseTo(prevCenterY, 5);
     });
 
+    it("centres the sheet in the viewport when leaving the infinite canvas", () => {
+      const appState = createBaseAppState({
+        pagePreset: null,
+        pageModeEnabled: false,
+        scrollX: 0,
+        scrollY: 0,
+      });
+
+      const result = (actionChangePagePreset.perform as any)([], appState, {
+        preset: "A4",
+      });
+      expect(result).not.toBe(false);
+      const resAppState = (result as any).appState;
+
+      const dims = getPageDimensions("A4", "portrait")!;
+      const sheetLeft = -dims.width / 2 + resAppState.scrollX;
+      const sheetTop = -dims.height / 2 + resAppState.scrollY;
+      expect(sheetLeft + dims.width / 2).toBeCloseTo(appState.width / 2, 5);
+      expect(sheetTop + dims.height / 2).toBeCloseTo(appState.height / 2, 5);
+    });
+
     it("preserves center on actionTogglePageOrientation", () => {
       const appState = createBaseAppState({
         pagePreset: "A4",
@@ -126,6 +155,152 @@ describe("pagePresets", () => {
       const nextCenterY = -resAppState.scrollY + landscapeDims.height / 2;
       expect(nextCenterX).toBeCloseTo(prevCenterX, 5);
       expect(nextCenterY).toBeCloseTo(prevCenterY, 5);
+    });
+  });
+
+  describe("paper sheet rendering", () => {
+    type RectCall = {
+      type: string;
+      props: { x: number; y: number; width: number; height: number };
+    };
+
+    const renderSheet = (appState: Partial<AppState>) => {
+      const scene = new Element.Scene([], { skipValidation: true });
+      const renderer = new Renderer(scene);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 500;
+      const context = canvas.getContext("2d") as any;
+      context.__clearEvents();
+
+      const state = {
+        ...getDefaultAppState(),
+        width: 500,
+        height: 500,
+        offsetLeft: 0,
+        offsetTop: 0,
+        scrollX: 0,
+        scrollY: 0,
+        zoom: { value: 1 as AppState["zoom"]["value"] },
+        ...appState,
+      } as AppState;
+
+      const { elementsMap } = renderer.getRenderableElements({
+        ...state,
+        selectedElements: [],
+      });
+
+      StaticScene.renderStaticScene({
+        canvas,
+        rc: rough.canvas(canvas),
+        scale: 1,
+        elementsMap: elementsMap as RenderableElementsMap,
+        allElementsMap: scene.getNonDeletedElementsMap(),
+        visibleElements: [],
+        appState: state,
+        renderConfig: {
+          imageCache: new Map(),
+          renderGrid: false,
+          isExporting: false,
+          canvasBackgroundColor: "#fff",
+          embedsValidationStatus: new Map(),
+          elementsPendingErasure: new Set(),
+          pendingFlowchartNodes: null,
+          theme: "light",
+        } as unknown as StaticCanvasRenderConfig,
+      });
+
+      const events = context.__getEvents() as RectCall[];
+      return {
+        strokeRects: events
+          .filter((event) => event.type === "strokeRect")
+          .map((event) => event.props),
+        fillRects: events
+          .filter((event) => event.type === "fillRect")
+          .map((event) => event.props),
+      };
+    };
+
+    it("draws an A4 paper sheet centered in scene space", () => {
+      const { strokeRects, fillRects } = renderSheet({
+        pageModeEnabled: true,
+        pagePreset: "A4",
+        pageOrientation: "portrait",
+      });
+
+      expect(strokeRects).toHaveLength(1);
+      expect(strokeRects[0].x).toBeCloseTo(-396.85, 2);
+      expect(strokeRects[0].y).toBeCloseTo(-561.26, 2);
+      expect(strokeRects[0].width).toBeCloseTo(793.7, 2);
+      expect(strokeRects[0].height).toBeCloseTo(1122.52, 2);
+
+      const sheetFill = fillRects.find((rect) => rect.width === 793.7);
+      expect(sheetFill).toBeDefined();
+      expect(sheetFill!.x).toBeCloseTo(-396.85, 2);
+      expect(sheetFill!.y).toBeCloseTo(-561.26, 2);
+    });
+
+    it("keeps the paper sheet pinned to scene space while panning", () => {
+      const panned = renderSheet({
+        pageModeEnabled: true,
+        pagePreset: "A4",
+        pageOrientation: "portrait",
+        scrollX: 200,
+        scrollY: 300,
+      });
+
+      expect(panned.strokeRects).toHaveLength(1);
+      const rect = panned.strokeRects[0];
+      // viewport-relative origin shifts by the scroll, scene-space origin does not
+      expect(rect.x).toBeCloseTo(-396.85 + 200, 2);
+      expect(rect.y).toBeCloseTo(-561.26 + 300, 2);
+      expect(rect.x - 200).toBeCloseTo(-396.85, 2);
+      expect(rect.y - 300).toBeCloseTo(-561.26, 2);
+      expect(rect.width).toBeCloseTo(793.7, 2);
+      expect(rect.height).toBeCloseTo(1122.52, 2);
+    });
+
+    it("fills the whole viewport with the workspace surface at any zoom", () => {
+      // the workspace fill is drawn after `context.scale(zoom)`, so it must be
+      // sized in scene units or the canvas background leaks at zoom != 1
+      for (const zoom of [0.5, 1, 2]) {
+        const { fillRects } = renderSheet({
+          pageModeEnabled: true,
+          pagePreset: "A4",
+          pageOrientation: "portrait",
+          zoom: { value: zoom as AppState["zoom"]["value"] },
+        });
+
+        // 500 css px of canvas == 500 / zoom scene units
+        const workspace = fillRects.find(
+          (rect) =>
+            rect.x === 0 &&
+            rect.y === 0 &&
+            Math.abs(rect.width - 500 / zoom) < 0.01 &&
+            Math.abs(rect.height - 500 / zoom) < 0.01,
+        );
+        expect(workspace).toBeDefined();
+      }
+    });
+
+    it("bypasses paper sheet rendering when page mode is disabled", () => {
+      const { strokeRects, fillRects } = renderSheet({
+        pageModeEnabled: false,
+        pagePreset: "A4",
+        pageOrientation: "portrait",
+      });
+
+      expect(strokeRects).toHaveLength(0);
+      expect(fillRects.some((rect) => rect.width === 793.7)).toBe(false);
+    });
+
+    it("bypasses paper sheet rendering when no preset is selected", () => {
+      const { strokeRects } = renderSheet({
+        pageModeEnabled: true,
+        pagePreset: null,
+        pageOrientation: "portrait",
+      });
+
+      expect(strokeRects).toHaveLength(0);
     });
   });
 

@@ -55,6 +55,11 @@ import type {
 } from "../scene/types";
 import type { StaticCanvasAppState, Zoom } from "../types";
 
+const WorkspaceBackground = {
+  [THEME.LIGHT]: "#f0efed",
+  [THEME.DARK]: applyDarkModeFilter("#f0efed"),
+} as const;
+
 const GridLineColor = {
   [THEME.LIGHT]: {
     bold: "#dddddd",
@@ -322,6 +327,15 @@ const _renderStaticScene = ({
       const y = originY + appState.scrollY;
       context.save();
       if (!isExporting) {
+        // the workspace reads as gray so the paper sheet stands out as a
+        // distinct surface, not just an outline on the canvas background
+        context.fillStyle = WorkspaceBackground[renderConfig.theme];
+        context.fillRect(
+          0,
+          0,
+          normalizedWidth / appState.zoom.value,
+          normalizedHeight / appState.zoom.value,
+        );
         context.shadowColor = "rgba(0, 0, 0, 0.15)";
         context.shadowBlur = 12;
         context.shadowOffsetY = 4;

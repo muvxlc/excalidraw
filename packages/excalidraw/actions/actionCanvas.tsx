@@ -458,6 +458,11 @@ export const actionChangePagePreset = register<{
       const zoom = appState.zoom.value;
       scrollX += (nextDimensions.width - prevDimensions.width) / 2 / zoom;
       scrollY += (nextDimensions.height - prevDimensions.height) / 2 / zoom;
+    } else if (nextDimensions) {
+      // coming from the infinite canvas the sheet would sit at the top-left
+      // corner, so centre it in the viewport instead
+      scrollX += appState.width / 2;
+      scrollY += appState.height / 2;
     }
 
     return {
