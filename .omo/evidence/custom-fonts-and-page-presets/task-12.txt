@@ -1,27 +1,21 @@
-TASK-12 EVIDENCE: Comprehensive Vitest test suites for fonts, presets, and export
+$ yarn test:app packages/excalidraw/tests/fonts/customFonts.test.ts packages/excalidraw/tests/canvas/pagePresets.test.ts packages/excalidraw/tests/scene/exportPagePreset.test.ts --run
 
-1. Created test files:
-   - packages/excalidraw/tests/fonts/customFonts.test.ts:
-     - Tests SFNT table parsing on fixtures: TestSans-Regular.ttf, TestSans-Regular.woff, TestSans-Regular.woff2, TestThai-Regular.ttf.
-     - Asserts matching metrics (unitsPerEm: 1000, ascender: 928, descender: -244, lineHeight: 1.205) across TTF, WOFF, and WOFF2 formats.
-     - Tests SHA-256 asset ID generation and malformed buffer handling.
-     - Tests Thai string "ภาษาไทย กิ้" baseline vertical offset via getVerticalOffset and lineHeight via getLineHeight.
-   - packages/excalidraw/tests/canvas/pagePresets.test.ts:
-     - Tests A4 (793.70 x 1122.52 px) and A5 (559.37 x 793.70 px) at 96 DPI in portrait and landscape.
-     - Tests actionChangePagePreset and actionTogglePageOrientation center preservation.
-     - Tests restoreAppState and cleanAppStateForExport preserving pagePreset, pageOrientation, and pageModeEnabled.
-   - packages/excalidraw/tests/scene/exportPagePreset.test.ts:
-     - Tests exportToCanvas with A4 portrait mode yielding 794 x 1123 px dimensions at 1x.
-     - Tests exportToSvg with pageModeEnabled setting viewBox and dimensions to A4 bounds.
-     - Tests exportToSvg embedding custom font @font-face data URL in <style class="style-fonts">.
+Exit code: 0
 
-2. Verification:
-   Command: yarn test:app packages/excalidraw/tests/fonts/ packages/excalidraw/tests/canvas/ packages/excalidraw/tests/scene/exportPagePreset.test.ts --run
-   Output:
-   Test Files  4 passed (4)
-   Tests       24 passed (24)
-   - packages/excalidraw/tests/fonts/fontParser.test.ts (10 tests)
-   - packages/excalidraw/tests/fonts/customFonts.test.ts (4 tests)
-   - packages/excalidraw/tests/canvas/pagePresets.test.ts (7 tests)
-   - packages/excalidraw/tests/scene/exportPagePreset.test.ts (3 tests)
-   Exit code: 0
+yarn run v1.22.22
+$ vitest packages/excalidraw/tests/fonts/customFonts.test.ts packages/excalidraw/tests/canvas/pagePresets.test.ts packages/excalidraw/tests/scene/exportPagePreset.test.ts --run
+
+ RUN  v3.0.6 /Volumes/data/omo/excalidraw
+
+ ✓ packages/excalidraw/tests/fonts/customFonts.test.ts (4 tests) 488ms
+ ✓ packages/excalidraw/tests/canvas/pagePresets.test.ts (7 tests) 11ms
+ ✓ packages/excalidraw/tests/scene/exportPagePreset.test.ts (3 tests) 358ms
+   ✓ exportPagePreset > exportToSvg > exports SVG with custom fontRef asserting embedded @font-face data URL 329ms
+
+ Test Files  3 passed (3)
+      Tests  14 passed (14)
+   Start at  18:47:48
+   Duration  9.91s (transform 5.06s, setup 3.98s, collect 11.88s, tests 857ms, environment 2.68s, prepare 1.30s)
+
+Done in 10.94s.
+
