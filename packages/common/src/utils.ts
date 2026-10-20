@@ -3,7 +3,6 @@ import { average } from "@excalidraw/math";
 import type { GlobalCoord } from "@excalidraw/math";
 
 import type { FontFamilyValues, FontString } from "@excalidraw/element/types";
-
 import type {
   ActiveTool,
   AppState,
@@ -20,9 +19,9 @@ import {
   WINDOWS_EMOJI_FALLBACK_FONT,
 } from "./constants";
 
-import type { MaybePromise, ResolutionType } from "./utility-types";
-
 import type { EVENT } from "./constants";
+import type { FontAssetId } from "./font-metadata";
+import type { MaybePromise, ResolutionType } from "./utility-types";
 
 let mockDateTime: string | null = null;
 
@@ -120,30 +119,42 @@ export const isWritableElement = (
   );
 };
 
+export function getCustomFontFamilyName(fontRef: FontAssetId): string {
+  return `ExcalidrawCustom_${fontRef.replace("sha256:", "").slice(0, 16)}`;
+}
+
 export const getFontFamilyString = ({
   fontFamily,
+  fontRef,
 }: {
   fontFamily: FontFamilyValues;
+  fontRef?: FontAssetId | null;
 }) => {
+  const customPrefix = fontRef ? `"${getCustomFontFamilyName(fontRef)}", ` : "";
   for (const [fontFamilyString, id] of Object.entries(FONT_FAMILY)) {
     if (id === fontFamily) {
-      return `${fontFamilyString}${getFontFamilyFallbacks(id)
+      return `${customPrefix}${fontFamilyString}${getFontFamilyFallbacks(id)
         .map((x) => `, ${x}`)
         .join("")}`;
     }
   }
-  return WINDOWS_EMOJI_FALLBACK_FONT;
+  return `${customPrefix}${WINDOWS_EMOJI_FALLBACK_FONT}`;
 };
 
 /** returns fontSize+fontFamily string for assignment to DOM elements */
 export const getFontString = ({
   fontSize,
   fontFamily,
+  fontRef,
 }: {
   fontSize: number;
   fontFamily: FontFamilyValues;
+  fontRef?: FontAssetId | null;
 }) => {
-  return `${fontSize}px ${getFontFamilyString({ fontFamily })}` as FontString;
+  return `${fontSize}px ${getFontFamilyString({
+    fontFamily,
+    fontRef,
+  })}` as FontString;
 };
 
 /** executes callback in the frame that's after the current one */

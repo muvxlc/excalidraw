@@ -1,0 +1,29 @@
+TASK-5 EVIDENCE: Integrate custom font resolution in text measurement, wrapping, and canvas rendering
+
+1. Modified files:
+   - packages/common/src/font-metadata.ts:
+     - Exported const CUSTOM_FONT_METRICS = new Map<FontAssetId, FontMetadata["metrics"]>();
+     - Exported function registerCustomFontMetrics(id: FontAssetId, metrics: FontMetadata["metrics"]): void;
+     - Updated getVerticalOffset(fontFamily, fontSize, lineHeightPx, fontRef?: FontAssetId | null):
+       - Uses metrics from CUSTOM_FONT_METRICS when fontRef is provided and registered.
+       - Falls back to FONT_METADATA[fontFamily]?.metrics || FONT_METADATA[FONT_FAMILY.Excalifont].metrics.
+     - Updated getLineHeight(fontFamily, fontRef?: FontAssetId | null):
+       - Returns customMetrics.lineHeight if fontRef is provided and custom metrics has lineHeight.
+       - Otherwise falls back to static FONT_METADATA.
+   - packages/common/src/utils.ts:
+     - Exported function getCustomFontFamilyName(fontRef: FontAssetId): string returning `ExcalidrawCustom_${fontRef.replace("sha256:", "").slice(0, 16)}`.
+     - Updated getFontFamilyString({ fontFamily, fontRef }):
+       - Prepends `"${getCustomFontFamilyName(fontRef)}", ` before standard family name and fallbacks when fontRef is provided.
+     - Updated getFontString({ fontSize, fontFamily, fontRef }):
+       - Passes fontRef to getFontFamilyString so canvas measuring/wrapping font string references custom font family.
+   - packages/element/src/renderElement.ts:
+     - Passed element.fontRef to getVerticalOffset in drawElementOnCanvas text rendering.
+   - packages/excalidraw/wysiwyg/textWysiwyg.tsx:
+     - Passed fontRef in textPropertiesUpdated when comparing getFontFamilyString with editable.style.fontFamily.
+     - Passed fontRef in paste handler when constructing font string for wrappedText / getTextWidth.
+     - Ensured updatedTextElement with fontRef is passed to getFontString / getFontFamilyString.
+
+2. Verification:
+   - yarn test:typecheck: Exit code 0 (PASS)
+   - yarn test:app packages/excalidraw/tests/fontTopPicks.test.ts --run: Exit code 0 (3 passed)
+   - yarn test:app packages/excalidraw/wysiwyg/textWysiwyg.test.tsx --run: Exit code 0 (144 passed)

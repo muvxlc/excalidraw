@@ -1,0 +1,36 @@
+TASK-4 EVIDENCE: Extend runtime font registry and FontFace loading coordinator in Fonts.ts
+
+1. Modified files:
+   - packages/excalidraw/fonts/Fonts.ts:
+     - Maintained custom fonts registry:
+       - private static _customFonts = new Map<FontAssetId, SceneFontAsset>();
+       - public static get customFonts() { return Fonts._customFonts; }
+       - public get customFonts(): Map<FontAssetId, SceneFontAsset> { return Fonts.customFonts; }
+     - Added document-scoped FontFace tracking:
+       - private static _documentCustomFonts = new WeakMap<Document, Map<FontAssetId, { fontFace: FontFace; loadPromise: Promise<void> }>>();
+     - Implemented helper static getCustomFontFamilyName(fontRef: FontAssetId): string:
+       - Returns `ExcalidrawCustom_${fontRef.replace("sha256:", "").slice(0, 16)}`
+     - Implemented registerCustomFont(asset: SceneFontAsset, ownerDocument: Document = document): Promise<void>:
+       - Stores asset in Fonts._customFonts.
+       - Safely checks and registers asset metrics via registerCustomFontMetrics(asset.id, asset.metrics) from @excalidraw/common if available.
+       - Deduplicates per ownerDocument using _documentCustomFonts returning existing loadPromise.
+       - Instantiates new FontFace(cssFamily, `url(${asset.data})`) and adds to ownerDocument.fonts.
+       - Awaits fontFace.load() and on resolution:
+         - (charWidth as any).clearCache();
+         - ShapeCache.destroy();
+         - Fonts.loadedFontsCache.add(cssFamily);
+       - On load failure, cleans up document-scoped cache entry and re-throws error.
+       - Exposes instance delegate registerCustomFont(asset: SceneFontAsset): Promise<void>.
+     - Implemented static loadCustomFontsFromScene(fonts?: SceneFonts, ownerDocument: Document = document): Promise<void>:
+       - Iterates through fonts dictionary and coordinates registerCustomFont for each.
+       - Exposes instance delegate loadCustomFontsFromScene(fonts?: SceneFonts): Promise<void>.
+   - packages/excalidraw/fonts/ExcalidrawFontFace.ts:
+     - Documented ponytail comment for direct FontFace coordinator boundary.
+
+2. Verification:
+   Command: yarn test:typecheck
+   Output:
+   yarn run v1.22.22
+   $ tsc
+   Done in 16.25s.
+   Exit code: 0

@@ -166,6 +166,18 @@ export const GOOGLE_FONTS_RANGES = {
 /** local protocol to skip the local font from registering or inlining */
 export const LOCAL_FONT_PROTOCOL = "local:";
 
+export const CUSTOM_FONT_METRICS = new Map<
+  FontAssetId,
+  FontMetadata["metrics"]
+>();
+
+export function registerCustomFontMetrics(
+  id: FontAssetId,
+  metrics: FontMetadata["metrics"],
+): void {
+  CUSTOM_FONT_METRICS.set(id, metrics);
+}
+
 /**
  * Calculates vertical offset for a text with alphabetic baseline.
  */
@@ -173,8 +185,12 @@ export const getVerticalOffset = (
   fontFamily: ExcalidrawTextElement["fontFamily"],
   fontSize: ExcalidrawTextElement["fontSize"],
   lineHeightPx: number,
+  fontRef?: FontAssetId | null,
 ) => {
   const { unitsPerEm, ascender, descender } =
+    (fontRef && CUSTOM_FONT_METRICS.has(fontRef)
+      ? CUSTOM_FONT_METRICS.get(fontRef)!
+      : null) ||
     FONT_METADATA[fontFamily]?.metrics ||
     FONT_METADATA[FONT_FAMILY.Excalifont].metrics;
 
@@ -189,7 +205,17 @@ export const getVerticalOffset = (
 /**
  * Gets line height for a selected family.
  */
-export const getLineHeight = (fontFamily: FontFamilyValues) => {
+export const getLineHeight = (
+  fontFamily: FontFamilyValues,
+  fontRef?: FontAssetId | null,
+) => {
+  if (fontRef && CUSTOM_FONT_METRICS.has(fontRef)) {
+    const customMetrics = CUSTOM_FONT_METRICS.get(fontRef);
+    if (customMetrics?.lineHeight) {
+      return customMetrics.lineHeight as ExcalidrawTextElement["lineHeight"];
+    }
+  }
+
   const { lineHeight } =
     FONT_METADATA[fontFamily]?.metrics ||
     FONT_METADATA[FONT_FAMILY.Excalifont].metrics;

@@ -71,6 +71,10 @@ export const serializeAsJSON = (
           undefined,
   };
 
+  if (appState.fonts && Object.keys(appState.fonts).length > 0) {
+    data.fonts = appState.fonts;
+  }
+
   return JSON.stringify(data, null, 2);
 };
 

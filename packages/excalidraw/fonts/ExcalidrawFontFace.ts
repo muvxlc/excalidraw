@@ -1,3 +1,4 @@
+// ponytail: custom fonts coordinate FontFace loading directly in Fonts.ts; upgrade when subsetting custom fonts.
 import { promiseTry, LOCAL_FONT_PROTOCOL } from "@excalidraw/common";
 
 import { subsetWoff2GlyphsByCodepoints } from "../subset/subset-main";

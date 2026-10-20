@@ -1,0 +1,53 @@
+Wave 2 Verification Report
+Date: 2026-10-20
+Status: PASSED
+
+======================================================================
+1. TypeScript Typecheck
+======================================================================
+Command: yarn test:typecheck
+Exit Code: 0
+Status: PASS
+Output:
+yarn run v1.22.22
+$ tsc
+Done in 17.50s.
+
+======================================================================
+2. ESLint Code Quality
+======================================================================
+Command: yarn test:code
+Exit Code: 0
+Status: PASS
+Details:
+Fixed import order in packages/common/src/utils.ts caused by Wave 2 type imports.
+Re-run passed with 0 errors and 0 warnings.
+Output:
+yarn run v1.22.22
+$ eslint --max-warnings=0 --ext .js,.ts,.tsx .
+Done in 33.70s.
+
+======================================================================
+3. Targeted Font Tests
+======================================================================
+Command: yarn test:app packages/excalidraw/tests/fonts/fontParser.test.ts packages/excalidraw/tests/fontTopPicks.test.ts --run
+Exit Code: 0
+Status: PASS
+Output:
+yarn run v1.22.22
+$ vitest packages/excalidraw/tests/fonts/fontParser.test.ts packages/excalidraw/tests/fontTopPicks.test.ts --run
+
+ RUN  v3.0.6 /Volumes/data/omo/excalidraw
+
+ ✓ packages/excalidraw/tests/fonts/fontParser.test.ts (10 tests) 359ms
+ ✓ packages/excalidraw/tests/fontTopPicks.test.ts (3 tests) 8ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Duration  6.87s
+
+Done in 7.82s.
+
+======================================================================
+Summary: All Wave 2 verification checks passed.
+======================================================================

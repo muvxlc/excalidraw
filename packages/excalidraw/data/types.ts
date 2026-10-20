@@ -1,4 +1,4 @@
-import type { VERSIONS } from "@excalidraw/common";
+import type { SceneFonts, VERSIONS } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
@@ -18,6 +18,7 @@ export interface ExportedDataState {
   elements: readonly ExcalidrawElement[];
   appState: ReturnType<typeof cleanAppStateForExport>;
   files: BinaryFiles | undefined;
+  fonts?: SceneFonts;
 }
 
 /**
@@ -47,6 +48,7 @@ export interface ImportedDataState {
   scrollToContent?: boolean;
   libraryItems?: LibraryItems_anyVersion;
   files?: BinaryFiles;
+  fonts?: SceneFonts;
 }
 
 export interface ExportedLibraryData {

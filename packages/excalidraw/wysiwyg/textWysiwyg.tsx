@@ -321,8 +321,10 @@ export const textWysiwyg = ({
     }
     const currentFont = editable.style.fontFamily.replace(/"/g, "");
     if (
-      getFontFamilyString({ fontFamily: updatedTextElement.fontFamily }) !==
-      currentFont
+      getFontFamilyString({
+        fontFamily: updatedTextElement.fontFamily,
+        fontRef: updatedTextElement.fontRef,
+      }).replace(/"/g, "") !== currentFont
     ) {
       return true;
     }
@@ -822,6 +824,10 @@ export const textWysiwyg = ({
             isStickyNoteElement(container) && boundTextElement
               ? boundTextElement.fontFamily
               : app.state.currentItemFontFamily,
+          fontRef:
+            isStickyNoteElement(container) && boundTextElement
+              ? boundTextElement.fontRef
+              : element.fontRef,
         });
         const maxWidth = getBoundTextMaxWidth(container, boundTextElement);
         const { selectionStart, selectionEnd, value } = editable;

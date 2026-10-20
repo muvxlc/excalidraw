@@ -1,3 +1,4 @@
+import * as commonModule from "@excalidraw/common";
 import {
   FONT_FAMILY,
   FONT_FAMILY_FALLBACKS,
@@ -16,6 +17,9 @@ import {
   getFontString,
   PromisePool,
   promiseTry,
+  type FontAssetId,
+  type SceneFontAsset,
+  type SceneFonts,
 } from "@excalidraw/common";
 
 import { ShapeCache } from "@excalidraw/element";
@@ -47,6 +51,111 @@ export class Fonts {
   // it's ok to track fonts across multiple instances only once, so let's use
   // a static member to reduce memory footprint
   public static readonly loadedFontsCache = new Set<string>();
+
+  private static _customFonts = new Map<FontAssetId, SceneFontAsset>();
+  public static get customFonts() {
+    return Fonts._customFonts;
+  }
+
+  public get customFonts(): Map<FontAssetId, SceneFontAsset> {
+    return Fonts.customFonts;
+  }
+
+  private static _documentCustomFonts = new WeakMap<
+    Document,
+    Map<FontAssetId, { fontFace: FontFace; loadPromise: Promise<void> }>
+  >();
+
+  public static getCustomFontFamilyName(fontRef: FontAssetId): string {
+    return `ExcalidrawCustom_${fontRef.replace("sha256:", "").slice(0, 16)}`;
+  }
+
+  public static registerCustomFont(
+    asset: SceneFontAsset,
+    ownerDocument: Document = document,
+  ): Promise<void> {
+    Fonts._customFonts.set(asset.id, asset);
+
+    let registerMetrics:
+      | ((id: FontAssetId, metrics: SceneFontAsset["metrics"]) => void)
+      | undefined;
+    try {
+      registerMetrics = (
+        commonModule as {
+          registerCustomFontMetrics?: (
+            id: FontAssetId,
+            metrics: SceneFontAsset["metrics"],
+          ) => void;
+        }
+      ).registerCustomFontMetrics;
+    } catch {
+      // ignore if not exported or mock throws
+    }
+    if (typeof registerMetrics === "function") {
+      registerMetrics(asset.id, asset.metrics);
+    }
+
+    const cssFamily = Fonts.getCustomFontFamilyName(asset.id);
+
+    let docFonts = Fonts._documentCustomFonts.get(ownerDocument);
+    if (!docFonts) {
+      docFonts = new Map();
+      Fonts._documentCustomFonts.set(ownerDocument, docFonts);
+    }
+
+    const existing = docFonts.get(asset.id);
+    if (existing) {
+      return existing.loadPromise;
+    }
+
+    const fontFace = new FontFace(cssFamily, `url(${asset.data})`);
+    if (ownerDocument.fonts && !ownerDocument.fonts.has(fontFace)) {
+      ownerDocument.fonts.add(fontFace);
+    }
+
+    const loadPromise = Promise.resolve(fontFace.load())
+      .then(() => {
+        (charWidth as any).clearCache();
+        ShapeCache.destroy();
+        Fonts.loadedFontsCache.add(cssFamily);
+      })
+      .catch((error) => {
+        docFonts.delete(asset.id);
+        try {
+          ownerDocument.fonts?.delete(fontFace);
+        } catch {
+          // ignore
+        }
+        throw error;
+      });
+
+    docFonts.set(asset.id, { fontFace, loadPromise });
+
+    return loadPromise;
+  }
+
+  public registerCustomFont = (asset: SceneFontAsset): Promise<void> => {
+    return Fonts.registerCustomFont(asset, this.ownerDocument);
+  };
+
+  public static async loadCustomFontsFromScene(
+    fonts?: SceneFonts,
+    ownerDocument: Document = document,
+  ): Promise<void> {
+    if (!fonts) {
+      return;
+    }
+
+    await Promise.all(
+      Object.values(fonts).map((asset) =>
+        Fonts.registerCustomFont(asset, ownerDocument),
+      ),
+    );
+  }
+
+  public loadCustomFontsFromScene = (fonts?: SceneFonts): Promise<void> => {
+    return Fonts.loadCustomFontsFromScene(fonts, this.ownerDocument);
+  };
 
   private static _registered:
     | Map<

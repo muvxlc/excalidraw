@@ -1,0 +1,32 @@
+TASK-6 EVIDENCE: Scene JSON serialization, restore, and IndexedDB local font persistence
+
+Status: Complete
+Exit code: 0
+
+1. Modified files:
+   - packages/excalidraw/data/types.ts:
+     - ExportedDataState: added `fonts?: SceneFonts;`
+     - ImportedDataState: added `fonts?: SceneFonts;`
+   - packages/excalidraw/data/json.ts:
+     - serializeAsJSON: includes `fonts: appState.fonts` in serialized JSON when `appState.fonts` has non-empty keys.
+   - packages/excalidraw/data/restore.ts:
+     - restoreElements: preserves `fontRef` on text elements if valid FontAssetId string (`sha256:${string}`), otherwise sets to undefined.
+     - restoreAppState: restores fonts from imported data (importedData.fonts || {}), merging into appState.fonts and preserving localAppState.fonts.
+
+2. Created files:
+   - packages/excalidraw/data/fontStorage.ts:
+     - Implements IndexedDB storage with DB name "excalidraw-fonts" and store "custom-fonts" keyed by "id".
+     - Exports `saveCustomFontToStorage(asset: SceneFontAsset): Promise<void>`
+     - Exports `loadCustomFontsFromStorage(): Promise<SceneFontAsset[]>`
+     - Provides graceful fallback when IndexedDB is unavailable (Node/SSR/disabled IDB) returning empty array or no-op without throwing.
+
+3. Verification:
+   - Command: `yarn test:typecheck`
+     Exit code: 0
+     Status: PASS
+   - Command: `yarn test:app packages/excalidraw/tests/data/restore.test.ts --run`
+     Exit code: 0
+     Status: PASS (69 passed, 0 failed)
+   - Command: `yarn test:code packages/excalidraw/data/types.ts packages/excalidraw/data/json.ts packages/excalidraw/data/restore.ts packages/excalidraw/data/fontStorage.ts`
+     Exit code: 0
+     Status: PASS

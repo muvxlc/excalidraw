@@ -17,6 +17,7 @@ import {
   FONT_FAMILY,
   FONT_METADATA,
   FONT_TOP_PICKS_SLOTS,
+  type FontAssetId,
   ROUNDNESS,
   DEFAULT_SIDEBAR,
   DEFAULT_ELEMENT_PROPS,
@@ -570,6 +571,13 @@ export const restoreElement = (
       const lineHeight =
         element.lineHeight ||
         restoreLineHeight({ ...element, fontSize, fontFamily, text });
+      const fontRef =
+        typeof element.fontRef === "string" &&
+        element.fontRef.startsWith("sha256:") &&
+        element.fontRef.length > 7
+          ? (element.fontRef as FontAssetId)
+          : undefined;
+
       element = restoreElementWithProperties(element, {
         fontSize,
         fontFamily,
@@ -588,7 +596,12 @@ export const restoreElement = (
         baseFontSize: isFiniteNumber(element.baseFontSize)
           ? normalizeStickyNoteFontSize(element.baseFontSize)
           : null,
+        ...(fontRef ? { fontRef } : {}),
       });
+
+      if (!fontRef) {
+        delete (element as any).fontRef;
+      }
 
       // if empty text, mark as deleted. We keep in array
       // for data integrity purposes (collab etc.)
@@ -1262,10 +1275,18 @@ const restoreFontTopPicks = (
 };
 
 export const restoreAppState = (
-  appState: ImportedDataState["appState"],
+  rawAppState: ImportedDataState["appState"] | ImportedDataState,
   localAppState: Partial<AppState> | null | undefined,
 ): RestoredAppState => {
-  appState = appState || {};
+  const importedData = rawAppState;
+  const appState = ((importedData &&
+  "appState" in importedData &&
+  importedData.appState
+    ? importedData.appState
+    : importedData) || {}) as Exclude<
+    ImportedDataState["appState"],
+    null | undefined
+  >;
   const defaultAppState = getDefaultAppState();
   const nextAppState = {} as typeof defaultAppState;
 
@@ -1334,7 +1355,7 @@ export const restoreAppState = (
       defaultAppState.currentItemStrokeWidthKey;
   }
 
-  return {
+  const resAppState: RestoredAppState = {
     ...nextAppState,
     cursorButton: localAppState?.cursorButton || "up",
     // reset on fresh restore so as to hide the UI button if penMode not active
@@ -1379,6 +1400,23 @@ export const restoreAppState = (
     ),
     editingFrame: null,
   };
+
+  const importedFonts =
+    (importedData && "fonts" in importedData && importedData.fonts
+      ? importedData.fonts
+      : undefined) ||
+    (appState && "fonts" in appState && appState.fonts
+      ? appState.fonts
+      : undefined) ||
+    {};
+
+  resAppState.fonts = {
+    ...(localAppState?.fonts || {}),
+    ...(resAppState.fonts || {}),
+    ...importedFonts,
+  };
+
+  return resAppState;
 };
 
 const restoreLibraryItem = (libraryItem: LibraryItem): LibraryItem | null => {

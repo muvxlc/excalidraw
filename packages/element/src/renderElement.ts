@@ -659,6 +659,7 @@ const drawElementOnCanvas = (
           element.fontFamily,
           element.fontSize,
           lineHeightPx,
+          element.fontRef,
         );
 
         for (let index = 0; index < lines.length; index++) {
