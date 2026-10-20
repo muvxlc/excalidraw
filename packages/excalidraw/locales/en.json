@@ -745,7 +745,9 @@
     "availableFonts": "Available fonts",
     "empty": "No fonts found",
     "topPicksTip": "Tip: drag any font onto your top picks to pin it",
-    "resetTopPicks": "Reset to default top picks"
+    "resetTopPicks": "Reset to default top picks",
+    "uploadTooLarge": "Font file is larger than 20MB",
+    "uploadInvalid": "Could not read this font file"
   },
   "userList": {
     "empty": "No users found",

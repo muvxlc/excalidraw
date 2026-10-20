@@ -1177,7 +1177,14 @@ export const actionChangeFontFamily = register<{
         appState,
         (element) => {
           const cachedElement = cachedElements?.get(element.id);
-          if (cachedElement) {
+          // a custom font picked while the popup was open lives only on the
+          // live element, so restoring the cached snapshot would revert it
+          if (
+            cachedElement &&
+            (!isTextElement(element) ||
+              (cachedElement as ExcalidrawTextElement).fontRef ===
+                element.fontRef)
+          ) {
             const newElement = newElementWith(element, {
               ...cachedElement,
             } as ElementUpdate<NonDeletedExcalidrawElement>);

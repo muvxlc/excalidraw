@@ -9,7 +9,7 @@ import React, {
 
 import { type FontFamilyValues } from "@excalidraw/element/types";
 
-import { isTextElement } from "@excalidraw/element";
+import { isTextElement, redrawTextBoundingBox } from "@excalidraw/element";
 
 import {
   arrayToList,
@@ -30,6 +30,7 @@ import { t } from "../../i18n";
 import {
   useApp,
   useAppProps,
+  useExcalidrawAPI,
   useExcalidrawContainer,
   useStylesPanelMode,
 } from "../App";
@@ -135,6 +136,7 @@ export const FontPickerList = React.memo(
   }: FontPickerListProps) => {
     const { container } = useExcalidrawContainer();
     const app = useApp();
+    const api = useExcalidrawAPI();
     const { fonts } = app;
     const { showDeprecatedFonts } = useAppProps();
     const stylesPanelMode = useStylesPanelMode();
@@ -164,6 +166,31 @@ export const FontPickerList = React.memo(
           for (const element of selectedTextElements) {
             app.scene.mutateElement(element, { fontRef: asset.id });
           }
+
+          // re-measure and redraw once the custom face is available, otherwise
+          // the text keeps its old bounding box and fallback glyphs
+          const family = Fonts.getCustomFontFamilyName(asset.id);
+          const fontString = `10px "${family}"`;
+          const chars = Array.from(
+            new Set(selectedTextElements.map((el) => el.originalText).join("")),
+          ).join();
+
+          Promise.resolve(app.ownerDocument.fonts.load(fontString, chars)).then(
+            () => {
+              for (const element of selectedTextElements) {
+                const latest = app.scene.getElement(element.id);
+                if (latest && isTextElement(latest)) {
+                  redrawTextBoundingBox(
+                    latest,
+                    latest.containerId
+                      ? app.scene.getElement(latest.containerId) ?? null
+                      : null,
+                    app.scene,
+                  );
+                }
+              }
+            },
+          );
         }
         app.setAppState({
           fonts: nextFonts,
@@ -179,6 +206,10 @@ export const FontPickerList = React.memo(
           console.error(
             `Font file "${file.name}" exceeds maximum allowed size of 20MB`,
           );
+          api?.setToast({
+            message: t("fontList.uploadTooLarge"),
+            closable: true,
+          });
           return;
         }
 
@@ -207,9 +238,13 @@ export const FontPickerList = React.memo(
           applyCustomFont(asset);
         } catch (error) {
           console.error(`Failed to load custom font "${file.name}"`, error);
+          api?.setToast({
+            message: t("fontList.uploadInvalid"),
+            closable: true,
+          });
         }
       },
-      [fonts, applyCustomFont],
+      [fonts, applyCustomFont, api],
     );
     const allFonts = useMemo(
       () =>

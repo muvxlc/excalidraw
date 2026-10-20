@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 import { FONT_FAMILY, KEYS } from "@excalidraw/common";
 
 import { Excalidraw } from "../..";
@@ -219,6 +222,201 @@ describe("FontPicker", () => {
       expect(h.state.fontTopPicks).toBe(null);
       expect(h.state.openPopup).toBe("fontFamily");
       await waitFor(() => expect(getResetLink()).toBe(null));
+    });
+  });
+
+  describe("custom font upload", () => {
+    const FIXTURES_DIR = path.resolve(__dirname, "../../tests/fixtures/fonts");
+
+    const openFontPicker = async () => {
+      const utils = await render(<Excalidraw handleKeyboardGlobally={true} />);
+      Keyboard.keyPress(KEYS.T);
+      act(() => {
+        utils.queryByTestId("font-family-show-fonts")!.click();
+      });
+      await waitFor(() =>
+        expect(document.querySelector(".dropdown-menu.fonts")).not.toBeNull(),
+      );
+      return utils;
+    };
+
+    const getFileInput = () =>
+      document.querySelector<HTMLInputElement>(
+        ".FontPicker__custom-font-upload input[type='file']",
+      )!;
+
+    const getCustomRows = () =>
+      document.querySelectorAll<HTMLElement>(
+        '[data-testid="font-picker-item-custom"]',
+      );
+
+    const getCurrentFontRef = () =>
+      (h.state as unknown as { currentItemFontRef: string | null })
+        .currentItemFontRef;
+
+    const getElementFontRef = () =>
+      (h.elements[0] as unknown as { fontRef?: string | null }).fontRef ?? null;
+
+    it("uploads an OTF font, lists it, and applies it to the selection", async () => {
+      await openFontPicker();
+
+      const buffer = fs.readFileSync(
+        path.join(FIXTURES_DIR, "TestSans-Regular.otf"),
+      );
+      const file = new File([new Uint8Array(buffer)], "TestSans-Regular.otf", {
+        type: "font/otf",
+      });
+      // jsdom's File predates Blob.arrayBuffer
+      Object.defineProperty(file, "arrayBuffer", {
+        value: () =>
+          Promise.resolve(
+            buffer.buffer.slice(
+              buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength,
+            ),
+          ),
+      });
+      const rowsBefore = getCustomRows().length;
+
+      await act(async () => {
+        fireEvent.change(getFileInput(), { target: { files: [file] } });
+      });
+
+      await waitFor(() => expect(getCustomRows().length).toBe(rowsBefore + 1));
+
+      const rows = Array.from(getCustomRows());
+      const uploaded = rows.find((row) => row.title === "TestSans-Regular");
+      expect(uploaded).toBeDefined();
+
+      await waitFor(() =>
+        expect(getCurrentFontRef()).toMatch(/^sha256:[a-f0-9]{64}$/),
+      );
+
+      act(() => {
+        uploaded!.click();
+      });
+      expect(getCurrentFontRef()).toMatch(/^sha256:[a-f0-9]{64}$/);
+    });
+
+    it("keeps the custom font applied after the picker closes", async () => {
+      const { container } = await render(
+        <Excalidraw handleKeyboardGlobally={true} />,
+      );
+
+      const text = API.createElement({
+        type: "text",
+        id: "text-custom-font",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 25,
+        text: "Hello Custom 123",
+        fontFamily: FONT_FAMILY.Excalifont,
+        fontSize: 20,
+      });
+      act(() => {
+        API.setElements([text]);
+        API.setAppState({ selectedElementIds: { [text.id]: true } });
+      });
+
+      act(() => {
+        container
+          .querySelector<HTMLElement>('[data-testid="font-family-show-fonts"]')!
+          .click();
+      });
+      await waitFor(() =>
+        expect(document.querySelector(".dropdown-menu.fonts")).not.toBeNull(),
+      );
+
+      const buffer = fs.readFileSync(
+        path.join(FIXTURES_DIR, "TestSans-Regular.otf"),
+      );
+      const file = new File([new Uint8Array(buffer)], "TestSans-Regular.otf", {
+        type: "font/otf",
+      });
+      Object.defineProperty(file, "arrayBuffer", {
+        value: () =>
+          Promise.resolve(
+            buffer.buffer.slice(
+              buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength,
+            ),
+          ),
+      });
+
+      await act(async () => {
+        fireEvent.change(getFileInput(), { target: { files: [file] } });
+      });
+
+      await waitFor(() =>
+        expect(getCurrentFontRef()).toMatch(/^sha256:[a-f0-9]{64}$/),
+      );
+      const appliedRef = getCurrentFontRef();
+      expect(getElementFontRef()).toBe(appliedRef);
+
+      // closing the picker must not restore the pre-open snapshot and drop the
+      // freshly applied custom font
+      act(() => {
+        container
+          .querySelector<HTMLElement>('[data-testid="font-family-show-fonts"]')!
+          .click();
+      });
+      await waitFor(() => expect(h.state.openPopup).not.toBe("fontFamily"));
+
+      expect(getElementFontRef()).toBe(appliedRef);
+    });
+
+    it("rejects font files larger than 20 MiB", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await openFontPicker();
+
+      const rowsBefore = getCustomRows().length;
+      const oversized = new File(
+        [new Uint8Array(20 * 1024 * 1024 + 1)],
+        "Huge.ttf",
+        { type: "font/ttf" },
+      );
+
+      await act(async () => {
+        fireEvent.change(getFileInput(), { target: { files: [oversized] } });
+      });
+
+      await waitFor(() =>
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("exceeds maximum allowed size of 20MB"),
+        ),
+      );
+      expect(getCustomRows().length).toBe(rowsBefore);
+      expect(getCurrentFontRef() ?? null).toBeNull();
+      // the user must see why nothing happened, not just a console line
+      await waitFor(() =>
+        expect(h.state.toast?.message).toBe("Font file is larger than 20MB"),
+      );
+
+      errorSpy.mockRestore();
+    });
+
+    it("shows a toast when the font file cannot be parsed", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await openFontPicker();
+
+      const garbage = new File([new Uint8Array([1, 2, 3, 4, 5])], "Bad.ttf", {
+        type: "font/ttf",
+      });
+      Object.defineProperty(garbage, "arrayBuffer", {
+        value: () => Promise.resolve(new Uint8Array([1, 2, 3, 4, 5]).buffer),
+      });
+
+      await act(async () => {
+        fireEvent.change(getFileInput(), { target: { files: [garbage] } });
+      });
+
+      await waitFor(() =>
+        expect(h.state.toast?.message).toBe("Could not read this font file"),
+      );
+      expect(getCurrentFontRef() ?? null).toBeNull();
+
+      errorSpy.mockRestore();
     });
   });
 });
