@@ -214,6 +214,7 @@ export class API {
     containerId?: T extends "text"
       ? ExcalidrawTextElement["containerId"]
       : never;
+    fontRef?: T extends "text" ? ExcalidrawTextElement["fontRef"] : never;
     points?: T extends "arrow" | "line" | "freedraw" ? readonly LocalPoint[] : never;
     polygon?: T extends "line" ? boolean : never;
     strokeOptions?: T extends "freedraw"
@@ -347,6 +348,7 @@ export class API {
           text: rest.text || "test",
           fontSize,
           fontFamily,
+          fontRef: (rest as any).fontRef,
           textAlign: rest.textAlign ?? appState.currentItemTextAlign,
           verticalAlign: rest.verticalAlign ?? DEFAULT_VERTICAL_ALIGN,
           containerId: rest.containerId ?? undefined,

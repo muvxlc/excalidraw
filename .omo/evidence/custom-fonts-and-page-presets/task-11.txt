@@ -1,0 +1,7 @@
+Task 11: Embed custom font @font-face data URLs in exported SVG.
+Command: yarn test:typecheck
+Exit code: 0
+Result: Clean pass.
+Files updated:
+- packages/excalidraw/fonts/Fonts.ts: added optional sceneFonts parameter to generateFontFaceDeclarations, embedded @font-face for unique fontRef text elements without HarfBuzz subsetting.
+- packages/excalidraw/scene/export.ts: passed scene fonts to Fonts.generateFontFaceDeclarations(elements, (data.appState as any)?.fonts || (appState as any)?.fonts).

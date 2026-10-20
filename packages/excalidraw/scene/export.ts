@@ -15,6 +15,7 @@ import {
   toBrandedType,
   applyDarkModeFilter,
   removeDarkModeFilter,
+  getPageDimensions,
 } from "@excalidraw/common";
 
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
@@ -618,6 +619,27 @@ const configExportDimension = async ({
   width = cfg.width ?? width;
   height = cfg.height ?? height;
 
+  if (
+    appState.pageModeEnabled &&
+    appState.pagePreset &&
+    !exportingFrame &&
+    cfg.x == null &&
+    cfg.y == null
+  ) {
+    const dims = getPageDimensions(
+      appState.pagePreset,
+      appState.pageOrientation,
+    );
+    if (dims) {
+      x = -dims.width / 2;
+      y = -dims.height / 2;
+      width = dims.width;
+      height = dims.height;
+      cfg.padding = 0;
+      cfg.fit = "none";
+    }
+  }
+
   // clamp against the target being fitted into (not the content: a flat
   // content axis mustn't zero the padding), before deriving from it
   if (cfg.widthOrHeight != null) {
@@ -1013,7 +1035,10 @@ const exportToSvg = async ({
 
   const fontFaces =
     config?.skipInliningFonts !== true
-      ? await Fonts.generateFontFaceDeclarations(elements)
+      ? await Fonts.generateFontFaceDeclarations(
+          elements,
+          (data.appState as any)?.fonts || (appState as any)?.fonts,
+        )
       : [];
 
   const delimiter = "\n      "; // 6 spaces

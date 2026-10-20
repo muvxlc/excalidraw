@@ -290,7 +290,33 @@ export class Fonts {
    */
   public static async generateFontFaceDeclarations(
     elements: readonly ExcalidrawElement[],
+    sceneFonts?: SceneFonts,
   ) {
+    const customFontFaces: string[] = [];
+    const seenFontRefs = new Set<string>();
+
+    for (const el of elements) {
+      if (isTextElement(el) && el.fontRef && !seenFontRefs.has(el.fontRef)) {
+        seenFontRefs.add(el.fontRef);
+        const asset =
+          sceneFonts?.[el.fontRef] || Fonts.customFonts.get(el.fontRef);
+        if (asset) {
+          const formatStr =
+            asset.format === "woff2"
+              ? "woff2"
+              : asset.format === "woff"
+              ? "woff"
+              : asset.format === "otf"
+              ? "opentype"
+              : "truetype";
+          const cssFamily = Fonts.getCustomFontFamilyName(asset.id);
+          customFontFaces.push(
+            `@font-face { font-family: '${cssFamily}'; src: url('${asset.data}') format('${formatStr}'); font-display: swap; }`,
+          );
+        }
+      }
+    }
+
     const families = Fonts.getUniqueFamilies(elements);
     const charsPerFamily = Fonts.getCharsPerFamily(elements);
 
@@ -322,7 +348,7 @@ export class Fonts {
     const fontFaces = await new PromisePool(iterator, concurrency).all();
 
     // dedup just in case (i.e. could be the same font faces with 0 glyphs)
-    return Array.from(new Set(fontFaces));
+    return Array.from(new Set([...customFontFaces, ...fontFaces]));
   }
 
   private static async loadFontFaces(

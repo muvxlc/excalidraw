@@ -1,0 +1,6 @@
+TASK: Integrate page preset cropping and dimension calculations in scene export.
+STATUS: COMPLETED
+EVIDENCE:
+- Added getPageDimensions import from "@excalidraw/common" in packages/excalidraw/scene/export.ts
+- Added page preset dimension calculations and overrides in configExportDimension when pageModeEnabled and pagePreset are active without frame export and explicit x/y coordinates
+- `yarn test:typecheck` completed cleanly with exit code 0.
