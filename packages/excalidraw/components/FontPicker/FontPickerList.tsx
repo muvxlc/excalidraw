@@ -22,7 +22,10 @@ import type { SceneFontAsset } from "@excalidraw/common";
 
 import type { ValueOf } from "@excalidraw/common/utility-types";
 
-import { saveCustomFontToStorage } from "../../data/fontStorage";
+import {
+  loadCustomFontsFromStorage,
+  saveCustomFontToStorage,
+} from "../../data/fontStorage";
 import { Fonts } from "../../fonts";
 import { parseFontFile } from "../../fonts/fontParser";
 import { getSelectedElements } from "../../scene";
@@ -145,10 +148,42 @@ export const FontPickerList = React.memo(
 
     const [searchTerm, setSearchTerm] = useState("");
     const [customFonts, setCustomFonts] = useState<readonly SceneFontAsset[]>(
-      () => Array.from(Fonts.customFonts.values()),
+      () => {
+        const fromMap = Array.from(Fonts.customFonts.values());
+        const fromAppState = Object.values(app.state.fonts || {});
+        const map = new Map<string, SceneFontAsset>();
+        for (const asset of [...fromMap, ...fromAppState]) {
+          map.set(asset.id, asset);
+        }
+        return Array.from(map.values());
+      },
     );
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      let cancelled = false;
+      loadCustomFontsFromStorage().then(async (storedAssets) => {
+        if (cancelled || !storedAssets.length) {
+          return;
+        }
+        await Promise.all(
+          storedAssets.map((asset) => fonts.registerCustomFont(asset)),
+        );
+        if (!cancelled) {
+          setCustomFonts((prev) => {
+            const map = new Map<string, SceneFontAsset>();
+            for (const asset of [...prev, ...storedAssets]) {
+              map.set(asset.id, asset);
+            }
+            return Array.from(map.values());
+          });
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [fonts]);
 
     // applies a custom font: stores it on the scene and sets `fontRef` on
     // selected text elements (or just the current item when nothing selected)

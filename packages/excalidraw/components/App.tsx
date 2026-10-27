@@ -277,6 +277,7 @@ import {
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
+import { loadCustomFontsFromStorage } from "../data/fontStorage";
 import { actionCopyElementLink } from "../actions/actionElementLink";
 import { actionUnlockAllElements } from "../actions/actionElementLock";
 import {
@@ -3681,6 +3682,30 @@ class App extends React.Component<AppProps, AppState> {
     // clear the shape and image cache so that any images in initialData
     // can be loaded fresh
     this.clearImageShapeCache();
+
+    // restore custom fonts from scene state and local font storage
+    const restoredCustomFonts = restoredAppState.fonts;
+    if (restoredCustomFonts) {
+      await this.fonts.loadCustomFontsFromScene(restoredCustomFonts);
+    }
+    loadCustomFontsFromStorage().then(async (storedAssets) => {
+      if (storedAssets.length) {
+        await Promise.all(
+          storedAssets.map((asset) => this.fonts.registerCustomFont(asset)),
+        );
+        this.setAppState((state) => {
+          const mergedFonts = { ...state.fonts };
+          let changed = false;
+          for (const asset of storedAssets) {
+            if (!mergedFonts[asset.id]) {
+              mergedFonts[asset.id] = asset;
+              changed = true;
+            }
+          }
+          return changed ? { fonts: mergedFonts } : null;
+        });
+      }
+    });
 
     // manually loading the font faces seems faster even in browsers that do fire the loadingdone event
     this.fonts.loadSceneFonts().then((fontFaces) => {
