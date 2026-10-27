@@ -1,5 +1,26 @@
 @use "../../css/variables.module" as *;
 
+.FontPicker__custom-font-upload {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--default-border-color);
+
+  button {
+    width: 100%;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-radius: var(--border-radius-md);
+
+    &:hover {
+      background-color: var(--button-hover-bg);
+    }
+  }
+}
+
 .excalidraw {
   .FontPicker__container {
     display: grid;
@@ -38,6 +59,27 @@
 
   .FontPicker__tip {
     margin-top: 0.5rem;
+  }
+
+  .FontPicker__custom-font-upload {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--default-border-color);
+
+    button {
+      width: 100%;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-radius: var(--border-radius-md);
+
+      &:hover {
+        background-color: var(--button-hover-bg);
+      }
+    }
   }
 }
 

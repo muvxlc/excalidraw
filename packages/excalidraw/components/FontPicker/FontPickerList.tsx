@@ -601,33 +601,33 @@ export const FontPickerList = React.memo(
               ))}
             </DropdownMenuGroup>
           )}
+          <div className="FontPicker__custom-font-upload">
+            <button
+              type="button"
+              data-testid="font-picker-add-font"
+              className={getDropdownMenuItemClassName("", false, false)}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <MenuItemContent icon={FontFamilyNormalIcon}>
+                Add font
+              </MenuItemContent>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={FONT_FILE_ACCEPT}
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  handleFontFileUpload(file);
+                }
+                // reset so picking the same file again re-triggers onChange
+                event.target.value = "";
+              }}
+            />
+          </div>
         </ScrollableList>
-        <div className="FontPicker__custom-font-upload">
-          <button
-            type="button"
-            data-testid="font-picker-add-font"
-            className={getDropdownMenuItemClassName("", false, false)}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <MenuItemContent icon={FontFamilyNormalIcon}>
-              Add font
-            </MenuItemContent>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={FONT_FILE_ACCEPT}
-            style={{ display: "none" }}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                handleFontFileUpload(file);
-              }
-              // reset so picking the same file again re-triggers onChange
-              event.target.value = "";
-            }}
-          />
-        </div>
         {dnd && (
           <TopPicksTip
             className="FontPicker__tip"
