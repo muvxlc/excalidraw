@@ -100,7 +100,7 @@ import Collab, {
   userToFollowAtom,
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
-import { AppMainMenu } from "./components/AppMainMenu";
+import { AppMainMenu, openAIDiagram } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
   ExportToExcalidrawPlus,
@@ -142,6 +142,7 @@ import DebugCanvas, {
 } from "./components/DebugCanvas";
 import { useSimulatedCollaborators } from "./debugCollaborators";
 import { AIComponents } from "./components/AI";
+import { AISettingsDialog } from "./components/AISettingsDialog";
 import { ExcalidrawPlusIframeExport } from "./ExcalidrawPlusIframeExport";
 
 import "./index.scss";
@@ -1033,6 +1034,7 @@ const ExcalidrawWrapper = () => {
           isCollabEnabled={!isCollabDisabled}
           theme={appTheme}
           refresh={() => forceRefresh((prev) => !prev)}
+          onAIDiagramOpen={() => openAIDiagram(excalidrawAPI ?? null)}
         />
         <AppWelcomeScreen
           onCollabDialogOpen={onCollabDialogOpen}
@@ -1060,6 +1062,7 @@ const ExcalidrawWrapper = () => {
         </OverwriteConfirmDialog>
         <AppFooter onChange={() => excalidrawAPI?.refresh()} />
         {excalidrawAPI && <AIComponents excalidrawAPI={excalidrawAPI} />}
+        <AISettingsDialog />
 
         <TTDDialogTrigger />
         {isCollaborating && isOffline && (
