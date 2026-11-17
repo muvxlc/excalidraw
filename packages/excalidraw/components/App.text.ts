@@ -700,9 +700,12 @@ export class AppText {
 
     const fontFamily =
       existingTextElement?.fontFamily || this.app.state.currentItemFontFamily;
+    const fontRef = existingTextElement
+      ? existingTextElement.fontRef ?? null
+      : this.app.state.currentItemFontRef ?? null;
 
     const lineHeight =
-      existingTextElement?.lineHeight || getLineHeight(fontFamily);
+      existingTextElement?.lineHeight || getLineHeight(fontFamily, fontRef);
     const fontSize = this.app.state.currentItemFontSize;
 
     if (
@@ -715,6 +718,7 @@ export class AppText {
       const fontString = {
         fontSize,
         fontFamily,
+        fontRef,
       };
       const minWidth = getApproxMinLineWidth(
         getFontString(fontString),
@@ -801,6 +805,7 @@ export class AppText {
             ? fontSize
             : null,
         fontFamily,
+        fontRef,
         textAlign:
           arrowEndpointBinding?.textAlign ??
           (parentCenterPosition

@@ -437,6 +437,7 @@ export class AppClipboard {
       text,
       fontSize: this.app.state.currentItemFontSize,
       fontFamily: this.app.state.currentItemFontFamily,
+      fontRef: this.app.state.currentItemFontRef ?? null,
       textAlign: DEFAULT_TEXT_ALIGN,
       verticalAlign: DEFAULT_VERTICAL_ALIGN,
       locked: false,
@@ -444,8 +445,12 @@ export class AppClipboard {
     const fontString = getFontString({
       fontSize: textElementProps.fontSize,
       fontFamily: textElementProps.fontFamily,
+      fontRef: textElementProps.fontRef,
     });
-    const lineHeight = getLineHeight(textElementProps.fontFamily);
+    const lineHeight = getLineHeight(
+      textElementProps.fontFamily,
+      textElementProps.fontRef,
+    );
     const LINE_GAP = 10;
 
     const lines = isPlainPaste ? [text] : text.split("\n");

@@ -418,5 +418,45 @@ describe("FontPicker", () => {
 
       errorSpy.mockRestore();
     });
+
+    it("applies uploaded custom font to newly created text elements", async () => {
+      await openFontPicker();
+
+      const buffer = fs.readFileSync(
+        path.join(FIXTURES_DIR, "TestSans-Regular.otf"),
+      );
+      const file = new File([new Uint8Array(buffer)], "TestSans-Regular.otf", {
+        type: "font/otf",
+      });
+      Object.defineProperty(file, "arrayBuffer", {
+        value: () =>
+          Promise.resolve(
+            buffer.buffer.slice(
+              buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength,
+            ),
+          ),
+      });
+
+      await act(async () => {
+        fireEvent.change(getFileInput(), { target: { files: [file] } });
+      });
+
+      await waitFor(() =>
+        expect(getCurrentFontRef()).toMatch(/^sha256:[a-f0-9]{64}$/),
+      );
+      const appliedRef = getCurrentFontRef();
+
+      act(() => {
+        h.app.text.startTextEditing({
+          sceneX: 100,
+          sceneY: 100,
+          autoEdit: true,
+        });
+      });
+
+      expect(h.elements.length).toBe(1);
+      expect(getElementFontRef()).toBe(appliedRef);
+    });
   });
 });

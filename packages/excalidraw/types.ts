@@ -8,6 +8,7 @@ import type {
   PagePreset,
   PageOrientation,
   SceneFonts,
+  FontAssetId,
 } from "@excalidraw/common";
 
 import type { LinearElementEditor } from "@excalidraw/element";
@@ -467,6 +468,7 @@ export interface AppState {
   currentItemStrokeVariability: StrokeVariability;
   currentItemOpacity: number;
   currentItemFontFamily: FontFamilyValues;
+  currentItemFontRef?: FontAssetId | null;
   currentItemFontSize: number;
   currentItemTextAlign: TextAlign;
   currentItemStartArrowhead: Arrowhead | null;

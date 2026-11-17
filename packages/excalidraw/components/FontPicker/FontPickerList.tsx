@@ -16,6 +16,7 @@ import {
   debounce,
   FONT_FAMILY,
   getFontFamilyString,
+  getLineHeight,
 } from "@excalidraw/common";
 
 import type { SceneFontAsset } from "@excalidraw/common";
@@ -197,9 +198,25 @@ export const FontPickerList = React.memo(
           includeBoundTextElement: true,
         }).filter(isTextElement);
 
+        if (appState.editingTextElement) {
+          const editingEl = app.scene
+            .getNonDeletedElementsMap()
+            .get(appState.editingTextElement.id);
+          if (
+            editingEl &&
+            isTextElement(editingEl) &&
+            !selectedTextElements.some((el) => el.id === editingEl.id)
+          ) {
+            selectedTextElements.push(editingEl);
+          }
+        }
+
         if (selectedTextElements.length) {
           for (const element of selectedTextElements) {
-            app.scene.mutateElement(element, { fontRef: asset.id });
+            app.scene.mutateElement(element, {
+              fontRef: asset.id,
+              lineHeight: getLineHeight(element.fontFamily, asset.id),
+            });
           }
 
           // re-measure and redraw once the custom face is available, otherwise
@@ -542,6 +559,26 @@ export const FontPickerList = React.memo(
       asset.name.toLowerCase().includes(searchTerm),
     );
 
+    const activeFontRef = useMemo(() => {
+      const elements = app.scene.getElementsIncludingDeleted();
+      const selectedText = getSelectedElements(elements, app.state, {
+        includeBoundTextElement: true,
+      }).filter(isTextElement);
+      if (selectedText.length === 1) {
+        return selectedText[0].fontRef ?? null;
+      }
+      if (selectedText.length > 1) {
+        const first = selectedText[0].fontRef ?? null;
+        return selectedText.every((el) => (el.fontRef ?? null) === first)
+          ? first
+          : null;
+      }
+      return (
+        (app.state as { currentItemFontRef?: string | null })
+          .currentItemFontRef ?? null
+      );
+    }, [app.scene, app.state]);
+
     return (
       <PropertiesPopover
         className="properties-content"
@@ -580,25 +617,35 @@ export const FontPickerList = React.memo(
           {groups.length ? groups : null}
           {filteredCustomFonts.length > 0 && (
             <DropdownMenuGroup title="Custom Fonts" key="group_custom">
-              {filteredCustomFonts.map((asset) => (
-                <button
-                  key={asset.id}
-                  type="button"
-                  data-testid="font-picker-item-custom"
-                  className={getDropdownMenuItemClassName("", false, false)}
-                  title={asset.name}
-                  onClick={() => applyCustomFont(asset)}
-                >
-                  <MenuItemContent
-                    icon={FontFamilyNormalIcon}
-                    textStyle={{
-                      fontFamily: Fonts.getCustomFontFamilyName(asset.id),
+              {filteredCustomFonts.map((asset) => {
+                const isSelected = activeFontRef === asset.id;
+                return (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    data-testid="font-picker-item-custom"
+                    className={getDropdownMenuItemClassName(
+                      "",
+                      isSelected,
+                      false,
+                    )}
+                    title={asset.name}
+                    onClick={() => {
+                      applyCustomFont(asset);
+                      onClose();
                     }}
                   >
-                    {asset.name}
-                  </MenuItemContent>
-                </button>
-              ))}
+                    <MenuItemContent
+                      icon={FontFamilyNormalIcon}
+                      textStyle={{
+                        fontFamily: Fonts.getCustomFontFamilyName(asset.id),
+                      }}
+                    >
+                      {asset.name}
+                    </MenuItemContent>
+                  </button>
+                );
+              })}
             </DropdownMenuGroup>
           )}
           <div className="FontPicker__custom-font-upload">
