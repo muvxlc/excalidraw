@@ -42,6 +42,7 @@ export const STORAGE_KEYS = {
   LOCAL_STORAGE_COLLAB: "excalidraw-collab",
   LOCAL_STORAGE_THEME: "excalidraw-theme",
   LOCAL_STORAGE_DEBUG: "excalidraw-debug",
+  LOCAL_STORAGE_AI_SETTINGS: "excalidraw-ai-settings",
   VERSION_DATA_STATE: "version-dataState",
   VERSION_FILES: "version-files",
 
@@ -51,6 +52,9 @@ export const STORAGE_KEYS = {
   // do not use apart from migrations
   __LEGACY_LOCAL_STORAGE_LIBRARY: "excalidraw-library",
 } as const;
+
+export const AI_DEFAULT_BASE_URL = "https://router.bangkhan.com/v1";
+export const AI_DEFAULT_MODEL = "";
 
 export const COOKIES = {
   AUTH_STATE_COOKIE: "excplus-auth",

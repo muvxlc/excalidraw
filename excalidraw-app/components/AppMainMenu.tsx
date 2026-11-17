@@ -2,6 +2,7 @@ import {
   loginIcon,
   ExcalLogo,
   eyeIcon,
+  brainIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { useI18n } from "@excalidraw/excalidraw/i18n";
 import { MainMenu } from "@excalidraw/excalidraw/index";
@@ -10,11 +11,20 @@ import React from "react";
 import { isDevEnv } from "@excalidraw/common";
 
 import type { Theme } from "@excalidraw/element/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { LanguageList } from "../app-language/LanguageList";
 import { isExcalidrawPlusSignedUser } from "../app_constants";
+import { useSetAtom } from "../app-jotai";
+
+import { aiSettingsDialogOpenAtom } from "./AISettingsDialog";
 
 import { saveDebugState } from "./DebugCanvas";
+
+export const openAIDiagram = (api: ExcalidrawImperativeAPI | null) =>
+  api?.updateScene({
+    appState: { openDialog: { name: "ttd", tab: "text-to-diagram" } },
+  });
 
 export const AppMainMenu: React.FC<{
   onCollabDialogOpen: () => any;
@@ -22,8 +32,10 @@ export const AppMainMenu: React.FC<{
   isCollabEnabled: boolean;
   theme: Theme | "system";
   refresh: () => void;
+  onAIDiagramOpen: () => void;
 }> = React.memo((props) => {
   const { t } = useI18n();
+  const setAISettingsDialogOpen = useSetAtom(aiSettingsDialogOpenAtom);
   return (
     <MainMenu>
       <MainMenu.DefaultItems.LoadScene />
@@ -39,6 +51,15 @@ export const AppMainMenu: React.FC<{
       )}
       <MainMenu.DefaultItems.CommandPalette className="highlighted" />
       <MainMenu.DefaultItems.SearchMenu />
+      <MainMenu.Item icon={brainIcon} onSelect={props.onAIDiagramOpen}>
+        AI Diagram
+      </MainMenu.Item>
+      <MainMenu.Item
+        icon={brainIcon}
+        onSelect={() => setAISettingsDialogOpen(true)}
+      >
+        AI Settings
+      </MainMenu.Item>
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
       <MainMenu.Separator />
