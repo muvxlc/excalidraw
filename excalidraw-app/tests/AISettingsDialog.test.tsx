@@ -40,24 +40,57 @@ describe("AISettingsDialog", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens with default URL and loads model options with authentication", async () => {
+  it.each(["", "old-user-key"])(
+    "loads proxy models without browser authentication with key %s",
+    async (key) => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify({ data: [{ id: "gpt-4o" }] })),
+        );
+      await mount();
+      open();
+      expect(screen.getByLabelText("Base URL")).toHaveValue("/api/ai");
+      expect(
+        screen.getByPlaceholderText("ใช้ key จาก server (ไม่ต้องกรอก)"),
+      ).toBeInTheDocument();
+      input("API Key (optional)", key);
+      click("Load Models");
+      await waitFor(() =>
+        expect(document.querySelector('option[value="gpt-4o"]')).not.toBeNull(),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/ai/models",
+        expect.objectContaining({
+          headers: {},
+        }),
+      );
+    },
+  );
+
+  it("requires custom credentials and uses them to load models", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ data: [{ id: "gpt-4o" }] })),
-      );
+      .mockResolvedValue(new Response('{"data":[{"id":"custom-model"}]}'));
     await mount();
     open();
-    expect(screen.getByLabelText("Base URL")).toHaveValue("/api/ai");
-    input("API Key", "test-key");
+    input("Base URL", "https://example.com/v1/");
+    click("Load Models");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId("ai-settings-status")).toHaveTextContent(
+      "API Key is required",
+    );
+    input("API Key", "custom-key");
     click("Load Models");
     await waitFor(() =>
-      expect(document.querySelector('option[value="gpt-4o"]')).not.toBeNull(),
+      expect(
+        document.querySelector('option[value="custom-model"]'),
+      ).not.toBeNull(),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/ai/models",
+      "https://example.com/v1/models",
       expect.objectContaining({
-        headers: { Authorization: "Bearer test-key" },
+        headers: { Authorization: "Bearer custom-key" },
       }),
     );
   });

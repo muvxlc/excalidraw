@@ -6,7 +6,8 @@ server {
 
   # Same-origin AI requests avoid the router's missing CORS headers.
   location /api/ai/ {
-    proxy_pass https://router.bangkhan.com/v1/;
+    proxy_pass __AI_UPSTREAM__/;
+    include /etc/nginx/conf.d/ai-auth.conf;
     proxy_http_version 1.1;
     proxy_ssl_server_name on;
     proxy_set_header Host router.bangkhan.com;

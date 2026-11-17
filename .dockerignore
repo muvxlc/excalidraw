@@ -5,7 +5,8 @@
 !.npmrc
 !.prettierrc
 !excalidraw-app/
-!nginx.conf
+!nginx.conf.template
+!docker-entrypoint.sh
 !package.json
 !public/
 !packages/

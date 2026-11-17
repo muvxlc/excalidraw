@@ -16,6 +16,9 @@ RUN npm_config_target_arch=${TARGETARCH} yarn build:app:docker
 FROM nginx:stable-alpine-slim@sha256:2c605dbeab79a6b2a63340474fe58119d0ef95bdc4b1f41df0aa689659b3d13b
 
 COPY --from=build /opt/node_app/excalidraw-app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 HEALTHCHECK CMD wget -q -O /dev/null http://localhost || exit 1

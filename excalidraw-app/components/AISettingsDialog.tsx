@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import "@excalidraw/excalidraw/components/TextField.scss";
 
 import { atom, useAtom } from "../app-jotai";
+import { AI_DEFAULT_BASE_URL } from "../app_constants";
 import {
   loadAISettings,
   resolveAIBaseUrl,
@@ -22,6 +23,8 @@ export const AISettingsDialog = () => {
   const [isLoading, setIsLoading] = useState(false);
   const request = useRef<AbortController | null>(null);
   const modelListId = useId();
+  const baseUrl = resolveAIBaseUrl(settings.baseUrl);
+  const isProxy = baseUrl === AI_DEFAULT_BASE_URL;
 
   useEffect(() => {
     if (isOpen) {
@@ -42,15 +45,18 @@ export const AISettingsDialog = () => {
     if (!isOpen) {
       return;
     }
+    if (!isProxy && !settings.apiKey.trim()) {
+      setStatus("Error: API Key is required for custom Base URLs");
+      return;
+    }
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     setIsLoading(true);
     setStatus("Loading...");
     try {
-      const baseUrl = resolveAIBaseUrl(settings.baseUrl);
       const response = await fetch(`${baseUrl}/models`, {
-        headers: { Authorization: `Bearer ${settings.apiKey}` },
+        headers: isProxy ? {} : { Authorization: `Bearer ${settings.apiKey}` },
         signal: controller.signal,
       });
       if (controller.signal.aborted) {
@@ -111,15 +117,22 @@ export const AISettingsDialog = () => {
           <label className="ExcTextField ExcTextField--fullWidth" key={field}>
             <div className="ExcTextField__label">
               {
-                { baseUrl: "Base URL", apiKey: "API Key", model: "Model" }[
-                  field
-                ]
+                {
+                  baseUrl: "Base URL",
+                  apiKey: isProxy ? "API Key (optional)" : "API Key",
+                  model: "Model",
+                }[field]
               }
             </div>
             <div className="ExcTextField__input">
               <input
                 type={field === "apiKey" ? "password" : "text"}
                 value={settings[field]}
+                placeholder={
+                  field === "apiKey" && isProxy
+                    ? "ใช้ key จาก server (ไม่ต้องกรอก)"
+                    : undefined
+                }
                 list={field === "model" ? modelListId : undefined}
                 onChange={(event) =>
                   setSettings({ ...settings, [field]: event.target.value })

@@ -98,29 +98,37 @@ afterEach(() => {
   });
 });
 
-it("rejects missing credentials before fetching", async () => {
-  saveSettings("", "");
-  const fetch = vi.spyOn(globalThis, "fetch");
-  const result = await submit();
-  expect(fetch).not.toHaveBeenCalled();
-  expect(result.error).toBeInstanceOf(RequestError);
-  expect(result.error?.status).toBe(400);
-  expect(result.error?.message).toBe(
-    "กรุณาตั้งค่า AI Settings (Base URL, API Key, Model) ก่อนใช้งาน",
-  );
-  expect(result.generatedResponse).toBeNull();
-});
+it.each([
+  ["", "", "/api/ai"],
+  ["test-model", "", "https://api.example.com/v1"],
+])(
+  "rejects missing required credentials before fetching",
+  async (model, key, baseUrl) => {
+    saveSettings(model, key, baseUrl);
+    const fetch = vi.spyOn(globalThis, "fetch");
+    const result = await submit();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.error).toBeInstanceOf(RequestError);
+    expect(result.error?.status).toBe(400);
+    expect(result.error?.message).toBe(
+      "กรุณาตั้งค่า AI Settings (Base URL, API Key, Model) ก่อนใช้งาน",
+    );
+    expect(result.generatedResponse).toBeNull();
+  },
+);
 
 it.each([
-  ["/api/ai", "/api/ai/chat/completions"],
+  ["/api/ai", "/api/ai/chat/completions", "test-key"],
+  ["/api/ai", "/api/ai/chat/completions", ""],
   [
     "https://api.example.com/v2///",
     "https://api.example.com/v2/chat/completions",
+    "test-key",
   ],
 ])(
   "streams OpenAI deltas and authenticates the model at %s",
-  async (baseUrl, url) => {
-    saveSettings("test-model", "test-key", baseUrl);
+  async (baseUrl, url, key) => {
+    saveSettings("test-model", key, baseUrl);
     const response = sseResponse();
     const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
     const onStreamCreated = vi.fn();
@@ -134,7 +142,7 @@ it.each([
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer test-key",
+        ...(baseUrl === "/api/ai" ? {} : { Authorization: "Bearer test-key" }),
       },
       body: expect.any(String),
       signal: undefined,
