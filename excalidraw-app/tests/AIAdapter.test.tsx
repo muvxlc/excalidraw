@@ -34,10 +34,14 @@ const bboxDescriptor = Object.getOwnPropertyDescriptor(
   SVGElement.prototype,
   "getBBox",
 );
-const saveSettings = (model = "test-model", apiKey = "test-key") => {
+const saveSettings = (
+  model = "test-model",
+  apiKey = "test-key",
+  baseUrl = "/api/ai",
+) => {
   localStorage.setItem(
     STORAGE_KEYS.LOCAL_STORAGE_AI_SETTINGS,
-    JSON.stringify({ baseUrl: "https://router.test/v1", apiKey, model }),
+    JSON.stringify({ baseUrl, apiKey, model }),
   );
 };
 const sseResponse = (
@@ -107,19 +111,26 @@ it("rejects missing credentials before fetching", async () => {
   expect(result.generatedResponse).toBeNull();
 });
 
-it("streams OpenAI deltas in order and authenticates the configured model", async () => {
-  const response = sseResponse();
-  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
-  const onStreamCreated = vi.fn();
-  const onChunk = vi.fn();
-  const result = await submit({ onStreamCreated, onChunk });
-  expect(onStreamCreated).toHaveBeenCalledTimes(1);
-  expect(onChunk.mock.calls).toEqual(deltas.map((delta) => [delta]));
-  expect(result).toEqual({ generatedResponse: deltas.join(""), error: null });
-  expect(response.body?.locked).toBe(false);
-  expect(fetch).toHaveBeenCalledWith(
-    "https://router.test/v1/chat/completions",
-    {
+it.each([
+  ["/api/ai", "/api/ai/chat/completions"],
+  [
+    "https://api.example.com/v2///",
+    "https://api.example.com/v2/chat/completions",
+  ],
+])(
+  "streams OpenAI deltas and authenticates the model at %s",
+  async (baseUrl, url) => {
+    saveSettings("test-model", "test-key", baseUrl);
+    const response = sseResponse();
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const onStreamCreated = vi.fn();
+    const onChunk = vi.fn();
+    const result = await submit({ onStreamCreated, onChunk });
+    expect(onStreamCreated).toHaveBeenCalledTimes(1);
+    expect(onChunk.mock.calls).toEqual(deltas.map((delta) => [delta]));
+    expect(result).toEqual({ generatedResponse: deltas.join(""), error: null });
+    expect(response.body?.locked).toBe(false);
+    expect(fetch).toHaveBeenCalledWith(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,19 +138,19 @@ it("streams OpenAI deltas in order and authenticates the configured model", asyn
       },
       body: expect.any(String),
       signal: undefined,
-    },
-  );
-  const body = fetch.mock.calls[0]?.[1]?.body;
-  expect(typeof body).toBe("string");
-  if (typeof body !== "string") {
-    throw new Error("Missing JSON request body");
-  }
-  expect(JSON.parse(body)).toEqual({
-    model: "test-model",
-    stream: true,
-    messages: [{ role: "system", content: expect.any(String) }, ...messages],
-  });
-});
+    });
+    const body = fetch.mock.calls[0]?.[1]?.body;
+    expect(typeof body).toBe("string");
+    if (typeof body !== "string") {
+      throw new Error("Missing JSON request body");
+    }
+    expect(JSON.parse(body)).toEqual({
+      model: "test-model",
+      stream: true,
+      messages: [{ role: "system", content: expect.any(String) }, ...messages],
+    });
+  },
+);
 
 it.each([401, 500])("returns structured HTTP %s errors", async (status) => {
   vi.spyOn(globalThis, "fetch").mockResolvedValue(

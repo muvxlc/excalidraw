@@ -16,7 +16,7 @@ import type { TTTDDialog } from "@excalidraw/excalidraw/components/TTDDialog/typ
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { TTDIndexedDBAdapter } from "../data/TTDStorage";
-import { loadAISettings } from "../data/AISettingsStorage";
+import { loadAISettings, resolveAIBaseUrl } from "../data/AISettingsStorage";
 
 export const MERMAID_SYSTEM_PROMPT =
   'Return only Mermaid syntax, without prose or markdown fences. Use syntax supported by @excalidraw/mermaid-to-excalidraw: flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, or classDiagram. ALWAYS double-quote node labels containing Thai characters or spaces (e.g. A["เริ่มต้นใช้งาน"]). Never emit click directives, style, classDef, or linkStyle directives, nested subgraphs, or HTML labels. Keep subgraphs simple and unnested.';
@@ -201,7 +201,8 @@ export const submitAIPrompt = async ({
   };
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const url = `${resolveAIBaseUrl(baseUrl)}/chat/completions`;
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

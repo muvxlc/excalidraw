@@ -41,6 +41,25 @@ describe("AISettingsStorage", () => {
     expect(loadAISettings()).toEqual({ ...settings, baseUrl: "https://x/v1" });
   });
 
+  it.each([
+    ["https://router.bangkhan.com/v1", "/api/ai"],
+    ["https://router.bangkhan.com/v1///", "/api/ai"],
+    ["", "/api/ai"],
+    ["https://api.example.com/v2/", "https://api.example.com/v2"],
+  ])("resolves stored base URL %s to %s", (baseUrl, resolved) => {
+    localStorage.setItem(
+      STORAGE_KEYS.LOCAL_STORAGE_AI_SETTINGS,
+      JSON.stringify({ baseUrl, apiKey: "k", model: "m" }),
+    );
+    expect(loadAISettings().baseUrl).toBe(resolved);
+    saveAISettings({ baseUrl, apiKey: "k", model: "m" });
+    expect(
+      JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_AI_SETTINGS) ?? "null",
+      ).baseUrl,
+    ).toBe(resolved);
+  });
+
   it("defaults fields with non-string stored values independently", () => {
     localStorage.setItem(
       STORAGE_KEYS.LOCAL_STORAGE_AI_SETTINGS,

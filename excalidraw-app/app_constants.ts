@@ -53,7 +53,8 @@ export const STORAGE_KEYS = {
   __LEGACY_LOCAL_STORAGE_LIBRARY: "excalidraw-library",
 } as const;
 
-export const AI_DEFAULT_BASE_URL = "https://router.bangkhan.com/v1";
+export const AI_DEFAULT_BASE_URL = "/api/ai";
+export const AI_ROUTER_BASE_URL = "https://router.bangkhan.com/v1";
 export const AI_DEFAULT_MODEL = "";
 
 export const COOKIES = {
