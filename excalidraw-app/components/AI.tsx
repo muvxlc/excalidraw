@@ -17,6 +17,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { TTDIndexedDBAdapter } from "../data/TTDStorage";
 import { loadAISettings, resolveAIBaseUrl } from "../data/AISettingsStorage";
+import { AI_DEFAULT_BASE_URL } from "../app_constants";
 
 export const MERMAID_SYSTEM_PROMPT =
   'Return only Mermaid syntax, without prose or markdown fences. Use syntax supported by @excalidraw/mermaid-to-excalidraw: flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, or classDiagram. ALWAYS double-quote node labels containing Thai characters or spaces (e.g. A["เริ่มต้นใช้งาน"]). Never emit click directives, style, classDef, or linkStyle directives, nested subgraphs, or HTML labels. Keep subgraphs simple and unnested.';
@@ -184,7 +185,9 @@ export const submitAIPrompt = async ({
   messages,
 }: TTTDDialog.OnTextSubmitProps): Promise<TTTDDialog.OnTextSubmitRetValue> => {
   const { baseUrl, apiKey, model } = loadAISettings();
-  if (!apiKey.trim() || !model.trim()) {
+  const resolvedBaseUrl = resolveAIBaseUrl(baseUrl);
+  const isProxy = resolvedBaseUrl === AI_DEFAULT_BASE_URL;
+  if ((!isProxy && !apiKey.trim()) || !model.trim()) {
     return {
       error: new RequestError({
         message:
@@ -201,12 +204,14 @@ export const submitAIPrompt = async ({
   };
 
   try {
-    const url = `${resolveAIBaseUrl(baseUrl)}/chat/completions`;
+    const url = `${resolvedBaseUrl}/chat/completions`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        ...(!isProxy && apiKey.trim()
+          ? { Authorization: `Bearer ${apiKey}` }
+          : {}),
       },
       body: JSON.stringify({
         model,
