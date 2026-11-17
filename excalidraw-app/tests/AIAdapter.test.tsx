@@ -142,7 +142,7 @@ it.each([
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(baseUrl === "/api/ai" ? {} : { Authorization: "Bearer test-key" }),
+        ...(key ? { Authorization: "Bearer test-key" } : {}),
       },
       body: expect.any(String),
       signal: undefined,

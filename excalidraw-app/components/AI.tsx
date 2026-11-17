@@ -209,9 +209,9 @@ export const submitAIPrompt = async ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(!isProxy && apiKey.trim()
-          ? { Authorization: `Bearer ${apiKey}` }
-          : {}),
+        // The server injects its own key when AI_PROXY_KEY is set and overrides
+        // this header; forwarding the user key keeps the proxy usable without one.
+        ...(apiKey.trim() ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
         model,
