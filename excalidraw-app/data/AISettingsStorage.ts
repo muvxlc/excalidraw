@@ -3,6 +3,7 @@ import { safelyParseJSON } from "@excalidraw/common";
 import {
   AI_DEFAULT_BASE_URL,
   AI_DEFAULT_MODEL,
+  AI_ROUTER_BASE_URL,
   STORAGE_KEYS,
 } from "../app_constants";
 
@@ -14,8 +15,12 @@ const DEFAULT_SETTINGS: AISettings = {
   model: AI_DEFAULT_MODEL,
 };
 
-const normalizeBaseUrl = (baseUrl: string) =>
-  baseUrl.replace(/\/+$/, "") || AI_DEFAULT_BASE_URL;
+export const resolveAIBaseUrl = (baseUrl: string): string => {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  return !normalized || normalized === AI_ROUTER_BASE_URL
+    ? AI_DEFAULT_BASE_URL
+    : normalized;
+};
 
 export const loadAISettings = (): AISettings => {
   try {
@@ -35,7 +40,7 @@ export const loadAISettings = (): AISettings => {
           ? parsed.model
           : DEFAULT_SETTINGS.model,
     };
-    return { ...settings, baseUrl: normalizeBaseUrl(settings.baseUrl) };
+    return { ...settings, baseUrl: resolveAIBaseUrl(settings.baseUrl) };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -47,7 +52,7 @@ export const saveAISettings = (settings: AISettings): void => {
       STORAGE_KEYS.LOCAL_STORAGE_AI_SETTINGS,
       JSON.stringify({
         ...settings,
-        baseUrl: normalizeBaseUrl(settings.baseUrl),
+        baseUrl: resolveAIBaseUrl(settings.baseUrl),
       }),
     );
   } catch {

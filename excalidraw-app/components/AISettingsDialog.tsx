@@ -6,8 +6,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import "@excalidraw/excalidraw/components/TextField.scss";
 
 import { atom, useAtom } from "../app-jotai";
-import { AI_DEFAULT_BASE_URL } from "../app_constants";
-import { loadAISettings, saveAISettings } from "../data/AISettingsStorage";
+import {
+  loadAISettings,
+  resolveAIBaseUrl,
+  saveAISettings,
+} from "../data/AISettingsStorage";
 
 export const aiSettingsDialogOpenAtom = atom(false);
 
@@ -45,8 +48,7 @@ export const AISettingsDialog = () => {
     setIsLoading(true);
     setStatus("Loading...");
     try {
-      const baseUrl =
-        settings.baseUrl.replace(/\/+$/, "") || AI_DEFAULT_BASE_URL;
+      const baseUrl = resolveAIBaseUrl(settings.baseUrl);
       const response = await fetch(`${baseUrl}/models`, {
         headers: { Authorization: `Bearer ${settings.apiKey}` },
         signal: controller.signal,

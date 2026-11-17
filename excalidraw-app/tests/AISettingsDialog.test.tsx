@@ -48,16 +48,14 @@ describe("AISettingsDialog", () => {
       );
     await mount();
     open();
-    expect(screen.getByLabelText("Base URL")).toHaveValue(
-      "https://router.bangkhan.com/v1",
-    );
+    expect(screen.getByLabelText("Base URL")).toHaveValue("/api/ai");
     input("API Key", "test-key");
     click("Load Models");
     await waitFor(() =>
       expect(document.querySelector('option[value="gpt-4o"]')).not.toBeNull(),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://router.bangkhan.com/v1/models",
+      "/api/ai/models",
       expect.objectContaining({
         headers: { Authorization: "Bearer test-key" },
       }),
