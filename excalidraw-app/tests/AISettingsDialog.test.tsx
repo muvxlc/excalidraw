@@ -40,9 +40,12 @@ describe("AISettingsDialog", () => {
     vi.restoreAllMocks();
   });
 
-  it.each(["", "old-user-key"])(
-    "loads proxy models without browser authentication with key %s",
-    async (key) => {
+  it.each([
+    ["", {}],
+    ["user-forwarded-key", { Authorization: "Bearer user-forwarded-key" }],
+  ])(
+    "loads proxy models forwarding the user key (%s)",
+    async (key, expectedHeaders) => {
       const fetchMock = vi
         .spyOn(globalThis, "fetch")
         .mockResolvedValue(
@@ -62,7 +65,7 @@ describe("AISettingsDialog", () => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/ai/models",
         expect.objectContaining({
-          headers: {},
+          headers: expectedHeaders,
         }),
       );
     },

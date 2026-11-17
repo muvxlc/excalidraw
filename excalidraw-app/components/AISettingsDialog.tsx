@@ -56,7 +56,11 @@ export const AISettingsDialog = () => {
     setStatus("Loading...");
     try {
       const response = await fetch(`${baseUrl}/models`, {
-        headers: isProxy ? {} : { Authorization: `Bearer ${settings.apiKey}` },
+        // Forward the user key when present; nginx replaces it with AI_PROXY_KEY
+        // on the server when that env var is configured.
+        headers: settings.apiKey.trim()
+          ? { Authorization: `Bearer ${settings.apiKey}` }
+          : {},
         signal: controller.signal,
       });
       if (controller.signal.aborted) {
