@@ -18,6 +18,165 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { TTDIndexedDBAdapter } from "../data/TTDStorage";
 import { loadAISettings } from "../data/AISettingsStorage";
 
+export const MERMAID_SYSTEM_PROMPT =
+  'Return only Mermaid syntax, without prose or markdown fences. Use syntax supported by @excalidraw/mermaid-to-excalidraw: flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, or classDiagram. ALWAYS double-quote node labels containing Thai characters or spaces (e.g. A["เริ่มต้นใช้งาน"]). Never emit click directives, style, classDef, or linkStyle directives, nested subgraphs, or HTML labels. Keep subgraphs simple and unnested.';
+
+export type AIDiagramPreset = {
+  id: string;
+  testId: string;
+  labelEn: string;
+  labelTh: string;
+  label: string;
+  description: string;
+  prompt: string;
+};
+
+export const AI_DIAGRAM_PRESETS: readonly AIDiagramPreset[] = [
+  {
+    id: "workflow",
+    testId: "ai-preset-workflow",
+    labelEn: "Workflow",
+    labelTh: "โฟลว์เวิร์กโฟลว์",
+    label: "Workflow / โฟลว์เวิร์กโฟลว์",
+    description: "Flowchart of a business/approval process",
+    prompt:
+      "สร้างผังงาน workflow แสดงกระบวนการทำงานและขั้นตอนการอนุมัติทางธุรกิจ (Business approval workflow flowchart)",
+  },
+  {
+    id: "flowchart",
+    testId: "ai-preset-flowchart",
+    labelEn: "Flowchart",
+    labelTh: "ผังงาน",
+    label: "Flowchart / ผังงาน",
+    description: "Step-by-step decision flow",
+    prompt:
+      "สร้างผังงาน flowchart แสดงขั้นตอนการตัดสินใจทีละขั้นตอน (Step-by-step decision flow)",
+  },
+  {
+    id: "sequence-diagram",
+    testId: "ai-preset-sequence-diagram",
+    labelEn: "Sequence Diagram",
+    labelTh: "ลำดับการทำงาน",
+    label: "Sequence Diagram / ลำดับการทำงาน",
+    description: "Actor-to-actor message flow",
+    prompt:
+      "สร้าง sequence diagram แสดงลำดับการทำงานและการรับส่งข้อความระหว่าง actors (Actor-to-actor message flow sequence diagram)",
+  },
+  {
+    id: "system-architecture",
+    testId: "ai-preset-system-architecture",
+    labelEn: "System Architecture",
+    labelTh: "สถาปัตยกรรมระบบ",
+    label: "System Architecture / สถาปัตยกรรมระบบ",
+    description: "Services, DB, client",
+    prompt:
+      "สร้างแผนภาพสถาปัตยกรรมระบบ แสดง client, services, และ database (System architecture diagram showing client, services, and database)",
+  },
+  {
+    id: "er-diagram",
+    testId: "ai-preset-er-diagram",
+    labelEn: "ER Diagram",
+    labelTh: "แผนภาพความสัมพันธ์",
+    label: "ER Diagram / แผนภาพความสัมพันธ์",
+    description: "Entity relationship diagram",
+    prompt:
+      "สร้างแผนภาพความสัมพันธ์ของข้อมูล ER diagram แสดง entities, attributes, และ relationships (Entity relationship diagram)",
+  },
+] as const;
+
+export const applyPresetPrompt = (prompt: string) => {
+  const textarea = document.querySelector<HTMLTextAreaElement>(
+    "textarea.chat-interface__input",
+  );
+  if (!textarea) {
+    return;
+  }
+  const win = textarea.ownerDocument.defaultView ?? window;
+  const setter = Object.getOwnPropertyDescriptor(
+    win.HTMLTextAreaElement.prototype,
+    "value",
+  )?.set;
+  if (setter) {
+    setter.call(textarea, prompt);
+  } else {
+    textarea.value = prompt;
+  }
+  textarea.dispatchEvent(new win.Event("input", { bubbles: true }));
+  textarea.dispatchEvent(new win.Event("change", { bubbles: true }));
+  textarea.focus();
+};
+
+export const renderAIWelcomeScreen: TTTDDialog.renderWelcomeScreen = () => {
+  return (
+    <div
+      className="ai-welcome-screen"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "100%",
+        padding: "1rem",
+        boxSizing: "border-box",
+      }}
+    >
+      <TTDDialog.WelcomeMessage />
+      <div
+        className="ai-presets-container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "0.5rem",
+          marginTop: "1.25rem",
+          width: "100%",
+          maxWidth: "480px",
+        }}
+      >
+        {AI_DIAGRAM_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={`ai-preset-chip ${preset.testId}`}
+            data-testid={preset.testId}
+            onClick={() => applyPresetPrompt(preset.prompt)}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              padding: "0.625rem 0.75rem",
+              borderRadius: "var(--border-radius-md, 8px)",
+              border: "1px solid var(--dialog-border-color, #e0e0e0)",
+              background: "var(--color-surface-low, #f5f5f5)",
+              color: "var(--color-on-surface, inherit)",
+              cursor: "pointer",
+              textAlign: "left",
+              fontFamily: "inherit",
+              lineHeight: 1.3,
+            }}
+          >
+            <span
+              className="ai-preset-chip__label"
+              style={{ fontWeight: 600, fontSize: "0.85rem" }}
+            >
+              {preset.label}
+            </span>
+            <span
+              className="ai-preset-chip__desc"
+              style={{
+                fontSize: "0.75rem",
+                opacity: 0.75,
+                marginTop: "0.25rem",
+              }}
+            >
+              {preset.description}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const submitAIPrompt = async ({
   onChunk,
   onStreamCreated,
@@ -38,8 +197,7 @@ export const submitAIPrompt = async ({
 
   const systemMessage = {
     role: "system",
-    content:
-      'Return only Mermaid syntax, without prose or markdown fences. Use syntax supported by @excalidraw/mermaid-to-excalidraw: flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, or classDiagram. Double-quote Thai labels inside node brackets, for example A["เริ่มต้นใช้งาน"]. Never emit click directives, custom style or classDef directives, or nested subgraphs. Keep subgraphs simple and unnested.',
+    content: MERMAID_SYSTEM_PROMPT,
   };
 
   try {
@@ -289,6 +447,7 @@ export const AIComponents = ({
 
       <TTDDialog
         onTextSubmit={submitAIPrompt}
+        renderWelcomeScreen={renderAIWelcomeScreen}
         persistenceAdapter={TTDIndexedDBAdapter}
       />
     </>
